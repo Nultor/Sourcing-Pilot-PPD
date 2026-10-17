@@ -221,3 +221,6 @@ __marimo__/
 
 # Private documents (not for GitHub)
 Muhrbeck_Viktor_Rapport_UE45.pdf
+
+# Generated synthetic data (reproducible: python -m data_gen.generate)
+data/synthetic/

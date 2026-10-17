@@ -176,6 +176,8 @@ flowchart LR
 
 ### 4.1 Synthetic data (PostgreSQL), packaging domain
 
+> **Implemented (v0):** the generator lives in [`data_gen/`](data_gen/README.md) and writes CSV/Excel exports plus a ground truth. The tables below are the target model; loading into PostgreSQL comes next.
+
 **Component families:** plastic bottles (PET/HDPE/PP), glass bottles and jars, pumps and sprays, caps/closures, labels, tubes, folding cartons.
 
 | Table | Content |
