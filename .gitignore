@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Private documents (not for GitHub)
+Muhrbeck_Viktor_Rapport_UE45.pdf
