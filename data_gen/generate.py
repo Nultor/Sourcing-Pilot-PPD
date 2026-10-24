@@ -98,6 +98,8 @@ def write_snapshot(out: Path, w: dict) -> dict:
             "CM = contract manufacturer capacity available but not used today.",
             "Please update the 'Last update' column when you change a value.",
         ]}).to_excel(xl, sheet_name="Notes", index=False)
+    # after every random export, so it doesn't shift the random stream of the files above
+    ex.npd_projects().to_csv(raw / "npd_projects.csv", index=False)
 
     products = w["products"].drop(columns=["base_qty", "growth", "stretch_factor", "launch_index"])
     truth = {

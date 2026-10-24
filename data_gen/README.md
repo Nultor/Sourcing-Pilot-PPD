@@ -34,7 +34,7 @@ site_production ───────┘   (BOM: PF → AC)            ├─ pr
                                                      └─ buyer_capacity_file.xlsx
 ```
 
-`site_bom_moq.csv` is the bridge: it is the only table that holds both codes. A value missing for an AC can often be found by going **AC → PF → another table** (e.g. a component's size or brand comes from its PF's format or brand).
+`site_bom_moq.csv` is the bridge: with `npd_projects.csv` (same link for products not launched yet), it is the only table that holds both codes. A value missing for an AC can often be found by going **AC → PF → another table** (e.g. a component's size or brand comes from its PF's format or brand).
 
 ## Raw exports (`<quarter>/raw/`)
 
@@ -45,6 +45,7 @@ site_production ───────┘   (BOM: PF → AC)            ├─ pr
 | `finance_std_cost.csv` | Finance | **STD price** (EUR/1000) per AC, FY2025 and FY2026 | AC codes exported as floats (`366287809.0`), two years → filter on year, a few blanks |
 | `finance_fx_rates.csv` | Finance | Quarterly rate to EUR | clean |
 | `site_bom_moq.csv` | Production site | PF → AC (BOM), qty per PF, **material**, **supplier**, **MOQ** | supplier short names, some suppliers/materials missing, spaces in AC codes |
+| `npd_projects.csv` | R&D / marketing | PF → AC (BOM) of new products not in the plant BOM yet, launch quarter, new-component flag | clean (no planted issues) |
 | `site_production.csv` | Production site | Qty produced per PF × quarter | a few missing quarters |
 | `erp_pir.csv` | ERP | **PIR**: price per AC × supplier × plant, price unit (1 or 1000), currency, validity, lead time, min order qty, deletion flag | **double filtering** needed (plant P100 + valid today + not deleted), history records, ×10 price typos, MOQ conflicts with the site, expired records |
 | `sourcing_contracts.csv` | Sourcing | Contract dates, last RFQ date | supplier names without legal form |

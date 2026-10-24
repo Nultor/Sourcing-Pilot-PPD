@@ -176,6 +176,23 @@ class Exporter:
                          "MOQ (pcs)": int(src.loc[(b.ac_code, sid), "moq_pcs"])})
         return pd.DataFrame(rows)
 
+    # ------------------------------------------------------------------ NPD pipeline
+    def npd_projects(self) -> pd.DataFrame:
+        """BOMs of products not launched yet: the plant BOM (site_bom_moq) only holds existing products.
+
+        Draws no random numbers, so adding this export leaves every other file unchanged."""
+        rows = []
+        for b in self.w["bom"].itertuples():
+            p = self.prod.loc[b.pf_code]
+            if not p.is_npd:
+                continue
+            rows.append({"Project": f"NPD-{p.launch_quarter}-{b.pf_code}", "PF Code": b.pf_code,
+                         "PF Description": p.pf_description, "Launch Quarter": p.launch_quarter,
+                         "AC Code": b.ac_code, "AC Description": self._desc(b.ac_code, 2),
+                         "Qty per PF": b.qty_per_pf,
+                         "New Component": "Y" if self.comp.loc[b.ac_code, "is_new"] else "N"})
+        return pd.DataFrame(rows)
+
     def site_production(self) -> pd.DataFrame:
         t = "site_production.csv"
         rows = []

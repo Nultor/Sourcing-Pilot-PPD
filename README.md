@@ -93,7 +93,7 @@ Two volume scenarios and two capacity scenarios:
 | **QTY baseline** | Reference demand forecast |
 | **QTY stretch** | High demand scenario (e.g. a product going viral) |
 | **Baseline capacity** | Capacity of the lines in use today (own plant + current suppliers), **without** CMs |
-| **Stretch capacity** | Baseline capacity **plus** CM capacity available today but not yet used |
+| **Stretch capacity** | Baseline capacity **plus** the available capacity of CMs **qualified** for that component (an unqualified CM doesn't count, however much capacity it has) |
 | **Baseline saturation** | QTY baseline ÷ baseline capacity |
 | **Stretch saturation** | QTY stretch ÷ stretch capacity |
 
@@ -103,7 +103,7 @@ The engine also computes the cross-cases (baseline demand on stretch capacity, s
 |---|---|---|
 | Baseline OK, stretch OK | No capacity issue | none |
 | Baseline > threshold, stretch OK | Activating CMs absorbs it short-term, but there's no buffer → consider an RFQ / investment | medium |
-| Stretch > threshold | **Even with every available CM activated, the high scenario can't be produced** → RFQ for new capacity or investment | **high** |
+| Stretch > threshold | **Even with every qualified CM activated, the high scenario can't be produced** → RFQ for new capacity or investment | **high** |
 | Projected to cross a threshold within N quarters | Early warning; urgency depends on lead time (RFQ, qualification, new mould/tooling) | depends on time to breach |
 
 Thresholds (e.g. 85% / 100%) and the horizon are configurable.
@@ -187,7 +187,7 @@ flowchart LR
 | `components` | code, family, technology, description, material, spec reference, UoM |
 | `suppliers` | id, name (fictional), country, technologies, certifications, ESG score |
 | `production_lines` | line id, **owner type (own plant / supplier)**, owner, technology (e.g. injection blow moulding, glass furnace, label press, pump assembly), **capacity per quarter**, status (in use) → **baseline capacity** |
-| `contract_manufacturers` | CM id, technology, **available capacity**, capacity already used, qualified components → **stretch capacity** = available minus used |
+| `contract_manufacturers` | CM id, technology, **available capacity**, capacity already used, qualified components → **stretch capacity** = baseline + available capacity of CMs qualified for the component |
 | `line_allocation` | which components run on which lines/CMs, and the share of volume |
 | `plants` | id, region, country |
 | `forecasts` | quarterly demand per PF/component × plant over **3 years**, in two scenarios: **QTY baseline** and **QTY stretch** |

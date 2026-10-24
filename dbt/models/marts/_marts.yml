@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: fct_saturation
+    description: Capacity saturation per component (AC) and forecast quarter, baseline and stretch.
+    columns:
+      - name: saturation_key
+        description: snapshot_quarter | ac_code | forecast_quarter (the grain)
+        data_tests: [unique, not_null]
+      - name: snapshot_quarter
+        data_tests: [not_null]
+      - name: ac_code
+        data_tests: [not_null]
+      - name: forecast_quarter
+        data_tests: [not_null]
+      - name: qty_baseline
+        data_tests: [not_null]
+      - name: qty_stretch
+        data_tests: [not_null]
+      - name: baseline_capacity
+        data_tests: [not_null]
+      - name: stretch_capacity
+        data_tests: [not_null]
+      - name: baseline_saturation
+        data_tests: [not_null]
+      - name: stretch_saturation
+        data_tests: [not_null]

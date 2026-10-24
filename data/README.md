@@ -165,6 +165,7 @@ SELECT * FROM raw.component_master LIMIT 5;                     -- look at the d
 | `WARNING: psql major version 14, server major version 16` | Old client. Use the native Postgres 16 client (below), or connect through `docker compose exec`. |
 | `brew install` compiles for ages | The Intel Homebrew in `/usr/local` is being used. Install with `/opt/homebrew/bin/brew install ...` instead. |
 | Container not `healthy` | `docker compose logs postgres` |
+| Loader: `cannot drop table raw.... because other objects depend on it` | dbt views are built on the raw tables. The loader now drops tables with `CASCADE` (this removes the dbt views too); run `dbt build` again afterwards. |
 
 **psql 16 client setup (one-time, Apple Silicon):**
 ```bash
