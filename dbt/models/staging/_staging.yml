@@ -1,0 +1,109 @@
+version: 2
+
+# Grain checks (unique_combination) and "did the cleaning resolve it" checks (not_null on
+# canonical suppliers, EUR prices and parsed units). A null there means a new spelling,
+# currency or unit appeared in the raw data that the staging rules don't know yet.
+
+models:
+  - name: stg_finance_forecast
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, pf_code, forecast_quarter] }
+    columns:
+      - name: pf_code
+        data_tests: [not_null]
+      - name: qty_baseline
+        data_tests: [not_null]
+      - name: qty_stretch
+        data_tests: [not_null]
+
+  - name: stg_site_bom_moq
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, plant, pf_code, ac_code] }
+    columns:
+      - name: ac_code
+        data_tests: [not_null]
+      - name: qty_per_pf
+        data_tests: [not_null]
+
+  - name: stg_npd_projects
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, pf_code, ac_code] }
+    columns:
+      - name: ac_code
+        data_tests: [not_null]
+      - name: qty_per_pf
+        data_tests: [not_null]
+
+  - name: stg_buyer_capacity
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, line_id] }
+    columns:
+      - name: ac_code
+        data_tests: [not_null]
+      - name: supplier
+        data_tests: [not_null]
+      - name: capacity_per_quarter
+        data_tests: [not_null]
+
+  - name: stg_site_production
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, plant, pf_code, quarter] }
+
+  - name: stg_finance_fx_rates
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, currency, quarter] }
+    columns:
+      - name: rate_to_eur
+        data_tests: [not_null]
+
+  - name: stg_erp_pir
+    columns:
+      - name: pir_no
+        data_tests: [not_null]
+      - name: supplier
+        data_tests: [not_null]
+      - name: price_eur_per_piece
+        data_tests: [not_null]
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, pir_no] }
+
+  - name: stg_finance_sales_history
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, pf_code, quarter] }
+    columns:
+      - name: pf_code
+        data_tests: [not_null]
+      - name: format_ml
+        data_tests: [not_null]
+
+  - name: stg_finance_std_cost
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, ac_code, fiscal_year] }
+    columns:
+      - name: ac_code
+        data_tests: [not_null]
+      - name: std_price_eur_per_piece
+        data_tests: [not_null]
+
+  - name: stg_price_breakdown
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, ac_code, supplier] }
+    columns:
+      - name: supplier
+        data_tests: [not_null]
+      - name: total_eur_per_piece
+        data_tests: [not_null]
+
+  - name: stg_component_master
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, ac_code] }
+    columns:
+      - name: family
+        data_tests: [not_null]
+
+  - name: stg_sourcing_contracts
+    data_tests:
+      - unique_combination: { columns: [snapshot_quarter, ac_code, supplier] }
+    columns:
+      - name: supplier
+        data_tests: [not_null]
