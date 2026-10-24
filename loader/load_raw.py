@@ -46,6 +46,9 @@ def main() -> None:
             conn.execute(text(f"create schema if not exists {schema}")) # schema is like a folder with multipe table sin it
         for name, dfs in tables.items():
             df = pd.concat(dfs, ignore_index=True)
+            # cascade also drops the dbt views built on this table; `dbt build` recreates them
+            with engine.begin() as conn:
+                conn.execute(text(f'drop table if exists {schema}."{name}" cascade'))
             df.to_sql(name, engine, schema=schema, if_exists="replace", index=False)
             print(f"{schema}.{name}: {len(df)} rows")
 

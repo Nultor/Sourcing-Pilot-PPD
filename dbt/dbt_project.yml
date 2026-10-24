@@ -1,0 +1,10 @@
+name: sourcing
+version: "0.1.0"
+profile: sourcing
+model-paths: ["models"]
+test-paths: ["tests"]
+models:
+  sourcing:
+    staging:      { +schema: staging,      +materialized: view }
+    intermediate: { +schema: intermediate, +materialized: view }
+    marts:        { +schema: marts,        +materialized: table }

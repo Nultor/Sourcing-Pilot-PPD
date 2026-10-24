@@ -224,3 +224,13 @@ Muhrbeck_Viktor_Rapport_UE45.pdf
 
 # Generated synthetic data (reproducible: python -m data_gen.generate)
 data/synthetic/
+
+data/
+.DS_Store
+
+dbt/target
+dbt/logs
+dbt/.user.yml
+
+# Cube local cache
+semantic/.cubestore/

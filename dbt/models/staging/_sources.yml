@@ -1,0 +1,23 @@
+version: 2
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: component_master
+      - name: erp_pir
+      - name: finance_forecast
+      - name: finance_fx_rates
+      - name: finance_sales_history
+      - name: finance_std_cost
+      - name: price_breakdown
+      - name: site_bom_moq
+      - name: site_production
+      - name: npd_projects
+      - name: sourcing_contracts
+      - name: buyer_capacity_file
+  - name: ground_truth
+    schema: ground_truth
+    tables:
+      - name: saturation
+      - name: capacity
+      - name: components

@@ -154,6 +154,25 @@ SELECT snapshot_quarter, count(*) FROM raw.erp_pir GROUP BY 1;   -- rows per qua
 SELECT * FROM raw.component_master LIMIT 5;                     -- look at the data
 ```
 
+### dbt output and the Cube semantic layer
+
+dbt builds on top of `raw.*` into `analytics_staging` (views), `analytics_intermediate` (views) and `analytics_marts` (tables). dbt prefixes each custom schema with the target schema from `profiles.yml` (`analytics`), hence the names.
+
+Cube runs as a second Compose service and reads the marts. Its data model is in `semantic/model/cubes/*.yml`. **Full guide: [`semantic/README.md`](../semantic/README.md).**
+
+| What | Command |
+|---|---|
+| Start Cube (Postgres starts first) | `docker compose up -d cube` |
+| Playground (build and run queries in the browser) | http://localhost:4000 |
+| Logs, e.g. after editing a cube | `docker compose logs -f cube` |
+| Run a saved query from the terminal | `python semantic/query.py semantic/queries/top_saturated.json` |
+| List all metrics | `python semantic/query.py --meta` |
+
+- Cube reaches Postgres on `postgres:5432` (service name, port inside the Docker network), not `localhost:5433`.
+- In dev mode, cube files are reloaded on save. No restart needed.
+- Marts are tables: after changing a dbt model, run `dbt build` before Cube shows new numbers.
+- The Cube API secret is `CUBEJS_API_SECRET` in `.env`. After changing `.env`, run `docker compose up -d cube` to restart Cube with it.
+
 ---
 
 ## 6. Troubleshooting
@@ -165,6 +184,8 @@ SELECT * FROM raw.component_master LIMIT 5;                     -- look at the d
 | `WARNING: psql major version 14, server major version 16` | Old client. Use the native Postgres 16 client (below), or connect through `docker compose exec`. |
 | `brew install` compiles for ages | The Intel Homebrew in `/usr/local` is being used. Install with `/opt/homebrew/bin/brew install ...` instead. |
 | Container not `healthy` | `docker compose logs postgres` |
+| `additional properties 'cube' not allowed` | A service in `docker-compose.yml` is outside `services:`. Each service must be indented under it. |
+| Loader: `cannot drop table raw.... because other objects depend on it` | dbt views are built on the raw tables. The loader now drops tables with `CASCADE` (this removes the dbt views too); run `dbt build` again afterwards. |
 
 **psql 16 client setup (one-time, Apple Silicon):**
 ```bash

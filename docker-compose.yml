@@ -11,5 +11,26 @@ services:
       interval: 5s
       retries: 10
 
+  # Semantic layer: reads the dbt marts, data model in semantic/model/.
+  # Playground at http://localhost:4000 (dev mode).
+  cube:
+    image: cubejs/cube:v1.8.11
+    ports:
+      - "4000:4000"
+    environment:
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: postgres      # the service name, not localhost
+      CUBEJS_DB_PORT: 5432          # port inside the Docker network, not 5433
+      CUBEJS_DB_NAME: ${POSTGRES_DB}
+      CUBEJS_DB_USER: ${POSTGRES_USER}
+      CUBEJS_DB_PASS: ${POSTGRES_PASSWORD}
+      CUBEJS_DEV_MODE: "true"
+      CUBEJS_API_SECRET: ${CUBEJS_API_SECRET}   # from .env
+    volumes:
+      - ./semantic:/cube/conf
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:

@@ -1,0 +1,6 @@
+{
+  "measures": ["saturation_history.peak_baseline_saturation", "saturation_history.peak_stretch_saturation"],
+  "dimensions": ["saturation_history.snapshot_quarter"],
+  "filters": [{"member": "saturation_history.ac_code", "operator": "equals", "values": ["369576663"]}],
+  "order": {"saturation_history.snapshot_quarter": "asc"}
+}
