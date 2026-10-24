@@ -1,0 +1,11 @@
+{
+  "measures": [
+    "saturation.forecast_demand_baseline",
+    "saturation.baseline_capacity",
+    "saturation.baseline_saturation",
+    "saturation.stretch_saturation"
+  ],
+  "dimensions": ["saturation.forecast_quarter"],
+  "filters": [{"member": "saturation.ac_code", "operator": "equals", "values": ["366413968"]}],
+  "order": {"saturation.forecast_quarter": "asc"}
+}

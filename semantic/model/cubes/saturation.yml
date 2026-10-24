@@ -1,0 +1,95 @@
+# Capacity saturation per component (AC) and forecast quarter (README §3.1, §4.2).
+# Built on the dbt mart fct_saturation. dbt prefixes custom schemas with the target
+# schema (analytics), which is why the table lives in analytics_marts.
+#
+# Two cubes on the same mart:
+#   saturation          latest snapshot only. Default for agents and the business case.
+#   saturation_history  every snapshot, for comparing quarters (e.g. 2026Q3 vs 2026Q4).
+#                       Always group or filter by snapshot_quarter, or the snapshots add up.
+#
+# Saturation is sum(demand) / sum(capacity), never an average of the per-row ratios:
+# averaging ratios gives wrong numbers as soon as someone groups by fewer dimensions.
+# The peak_* measures are the worst single quarter (max of the per-row ratio).
+
+cubes:
+  - name: saturation_history
+    sql_table: analytics_marts.fct_saturation
+    description: Capacity saturation per component and forecast quarter, every data snapshot.
+
+    dimensions:
+      # grain: snapshot_quarter | ac_code | forecast_quarter
+      - name: saturation_key
+        sql: saturation_key
+        type: string
+        primary_key: true
+        public: false
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+        description: Quarter of the data extract the numbers come from, e.g. 2026Q4.
+      - name: ac_code
+        sql: ac_code
+        type: string
+        description: Packaging component (AC) code.
+      - name: forecast_quarter
+        sql: forecast_quarter
+        type: string
+        description: Quarter the demand and capacity apply to (3-year horizon).
+
+    measures:
+      - name: forecast_demand_baseline
+        sql: qty_baseline
+        type: sum
+        description: QTY baseline demand in pieces (reference forecast x BOM).
+      - name: forecast_demand_stretch
+        sql: qty_stretch
+        type: sum
+        description: QTY stretch demand in pieces (high scenario x BOM).
+      - name: baseline_capacity
+        sql: baseline_capacity
+        type: sum
+        description: Capacity in pieces of the lines in use today, without CMs.
+      - name: stretch_capacity
+        sql: stretch_capacity
+        type: sum
+        description: Baseline capacity plus available capacity of CMs qualified for the component.
+
+      - name: baseline_saturation
+        type: number
+        format: percent
+        sql: "{forecast_demand_baseline} / NULLIF({baseline_capacity}, 0)"
+        description: QTY baseline / baseline capacity. Above 0.85 is a warning, above 1.0 critical.
+      - name: stretch_saturation
+        type: number
+        format: percent
+        sql: "{forecast_demand_stretch} / NULLIF({stretch_capacity}, 0)"
+        description: QTY stretch / stretch capacity. Above threshold means even every qualified CM is not enough.
+      # cross cases, for the full matrix in the business case
+      - name: baseline_qty_on_stretch_capacity
+        type: number
+        format: percent
+        sql: "{forecast_demand_baseline} / NULLIF({stretch_capacity}, 0)"
+        description: QTY baseline / stretch capacity (can activating CMs absorb the baseline?).
+      - name: stretch_qty_on_baseline_capacity
+        type: number
+        format: percent
+        sql: "{forecast_demand_stretch} / NULLIF({baseline_capacity}, 0)"
+        description: QTY stretch / baseline capacity (high scenario without any CM).
+
+      - name: peak_baseline_saturation
+        sql: baseline_saturation
+        type: max
+        format: percent
+        description: Worst single-quarter baseline saturation in the selection.
+      - name: peak_stretch_saturation
+        sql: stretch_saturation
+        type: max
+        format: percent
+        description: Worst single-quarter stretch saturation in the selection.
+
+  - name: saturation
+    extends: saturation_history
+    sql: >
+      SELECT * FROM analytics_marts.fct_saturation
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.fct_saturation)
+    description: Capacity saturation per component and forecast quarter, latest data snapshot only.

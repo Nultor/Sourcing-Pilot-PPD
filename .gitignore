@@ -231,3 +231,6 @@ data/
 dbt/target
 dbt/logs
 dbt/.user.yml
+
+# Cube local cache
+semantic/.cubestore/
