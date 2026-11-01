@@ -234,3 +234,6 @@ dbt/.user.yml
 
 # Cube local cache
 semantic/.cubestore/
+
+# Saved chats from the Streamlit app
+app/chats/

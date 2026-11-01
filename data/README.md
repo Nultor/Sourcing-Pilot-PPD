@@ -167,6 +167,10 @@ Cube runs as a second Compose service and reads the marts. Its data model is in 
 | Logs, e.g. after editing a cube | `docker compose logs -f cube` |
 | Run a saved query from the terminal | `python semantic/query.py semantic/queries/top_saturated.json` |
 | List all metrics | `python semantic/query.py --meta` |
+| Ask the analyst agent (terminal) | `python -m pipeline.agents.analyst "Which components are most saturated?"` |
+| Chat with the analyst agent (browser, saved chats in `app/chats/`) | `streamlit run app/streamlit_app.py` |
+| Test the saturation mart through Cube + the agent tools (free, needs Docker) | `pytest tests/test_saturation_cube.py tests/test_cube_tools.py` |
+| Score the analyst agent on the planted cases (costs API calls) | `pytest evals --run-llm` |
 
 - Cube reaches Postgres on `postgres:5432` (service name, port inside the Docker network), not `localhost:5433`.
 - In dev mode, cube files are reloaded on save. No restart needed.
@@ -185,6 +189,7 @@ Cube runs as a second Compose service and reads the marts. Its data model is in 
 | `brew install` compiles for ages | The Intel Homebrew in `/usr/local` is being used. Install with `/opt/homebrew/bin/brew install ...` instead. |
 | Container not `healthy` | `docker compose logs postgres` |
 | `additional properties 'cube' not allowed` | A service in `docker-compose.yml` is outside `services:`. Each service must be indented under it. |
+| Docker Desktop icon does nothing; `docker` commands give `500 Internal Server Error` | The Docker VM got stuck after Resource Saver paused it (backend log: `no route to host`). Quit Docker completely and open it again: `osascript -e 'quit app "Docker Desktop"'; pkill -f /Applications/Docker.app; open -a Docker`, then `docker compose up -d`. |
 | Loader: `cannot drop table raw.... because other objects depend on it` | dbt views are built on the raw tables. The loader now drops tables with `CASCADE` (this removes the dbt views too); run `dbt build` again afterwards. |
 
 **psql 16 client setup (one-time, Apple Silicon):**

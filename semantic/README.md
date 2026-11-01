@@ -32,6 +32,7 @@ semantic/
 ├── model/cubes/           ← the metric definitions (YAML). Cube reads everything here.
 │   └── saturation.yml
 ├── queries/               ← example queries (JSON) you can run with query.py
+├── cube_client.py         ← the connection to Cube (token + request), used by query.py and the agents
 ├── query.py               ← run a query from the terminal
 └── .cubestore/            ← Cube's local cache. Created automatically, gitignored, ignore it.
 ```
@@ -111,7 +112,22 @@ A query file looks like this:
 
 Names are always `cube.member`. Other useful filter operators: `notEquals`, `gt`, `lt`, `contains`, `set`.
 
-**Why a script, and not plain `curl`?** The Cube API asks for a token on each request (a JWT signed with `CUBEJS_API_SECRET` from `.env`). `query.py` makes that token for you.
+**Why a script, and not plain `curl`?** The Cube API asks for a token on each request (a JWT signed with `CUBEJS_API_SECRET` from `.env`). `cube_client.py` makes that token for you.
+
+### 4. From Python (what the agents use)
+
+`cube_client.py` has two functions that return data instead of printing it:
+
+```python
+from semantic.cube_client import get_meta, load    # run from the repo root (python -m ...)
+
+get_meta()   # every cube, measure and dimension, with descriptions
+load({"measures": ["saturation.peak_baseline_saturation"],
+      "dimensions": ["saturation.ac_code"], "limit": 5})
+# → [{"saturation.ac_code": "361004668", "saturation.peak_baseline_saturation": "1.9502"}, ...]
+```
+
+Numbers come back as text (`"1.9502"`); use `float(...)` to calculate with them. The agent's tools in `pipeline/tools/cube.py` are built on these two functions (see `pipeline/README.md`). The tests for this layer are in `tests/test_saturation_cube.py` (see `tests/README.md`).
 
 ## Changing or adding a metric
 
