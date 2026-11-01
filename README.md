@@ -2,8 +2,23 @@
 
 > An agentic pipeline that runs a **packaging sourcer's full RFQ workflow**: it detects which RFQs matter most, builds the business case, prepares every RFQ document, analyses supplier bids, suggests how to challenge suppliers, and writes the final report. **The sourcer keeps the decisions and the negotiation.**
 
-**Status:** planning / MVP design
+**Status:** phase 2–3 in progress: synthetic data, dbt saturation mart, Cube, a first analyst agent with a chat UI, and tests
 **Goal of the MVP:** an end-to-end demo for my former manager in direct sourcing, built entirely on synthetic packaging data, that shows how much sourcer time goes into admin work and how much of it can be automated.
+
+### Getting started
+
+| What | Where to read | Command (from the repo root) |
+|---|---|---|
+| Set up Python | this section | `uv venv && uv pip install -r requirements.txt` |
+| `.env` (gitignored, create it yourself) | `data/README.md` §2 | keys: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`, `CUBEJS_API_SECRET`, `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) |
+| Start Postgres + Cube | `data/README.md` | `docker compose up -d` |
+| Generate and load the data | `data_gen/README.md`, `data/README.md` | `python -m data_gen.generate && python loader/load_raw.py` |
+| Build the dbt models and run their tests | `dbt/README.md` | `cd dbt && dbt build --profiles-dir .` |
+| Query the metrics (Cube) | `semantic/README.md` | `python semantic/query.py --meta` |
+| Ask the analyst agent | `pipeline/README.md` | `python -m pipeline.agents.analyst "Which components are most saturated?"` |
+| Chat UI | `app/README.md` | `streamlit run app/streamlit_app.py` |
+| Tests (free) | `tests/README.md` | `pytest` |
+| Agent evals (cost API calls) | `evals/README.md` | `pytest evals --run-llm` |
 
 ---
 
