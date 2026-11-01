@@ -11,10 +11,11 @@ The model is OPENAI_MODEL in .env (default below); the key is OPENAI_API_KEY.
 """
 import os
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -72,15 +73,29 @@ def build_graph(model: str | None = None):
     return graph.compile()
 
 
-def ask(question: str) -> str:
-    """Run the agent on one question, print each tool call, return the final answer."""
-    final = None
-    for update in build_graph().stream({"messages": [HumanMessage(question)]}, stream_mode="updates"):
+def run(history: list[dict]) -> Iterator[tuple[str, dict | str]]:
+    """Run the agent on a conversation and yield its steps as they happen.
+
+    history: [{"role": "user" | "assistant", "content": str}, ...], ending with the new question.
+    Yields ("tool", {"name": ..., "args": ...}) for each tool call, then ("answer", text).
+    """
+    messages = [HumanMessage(m["content"]) if m["role"] == "user" else AIMessage(m["content"]) for m in history]
+    answer = ""
+    for update in build_graph().stream({"messages": messages}, stream_mode="updates"):
         for message in update.get("agent", {}).get("messages", []):
             for call in message.tool_calls:
-                print(f"  → {call['name']}({call['args']})")
-            final = message.content
-    return final
+                yield "tool", {"name": call["name"], "args": call["args"]}
+            answer = message.content
+    yield "answer", answer
+
+
+def ask(question: str) -> str:
+    """Run the agent on one question, print each tool call, return the final answer."""
+    for kind, value in run([{"role": "user", "content": question}]):
+        if kind == "tool":
+            print(f"  → {value['name']}({value['args']})")
+        else:
+            return value
 
 
 if __name__ == "__main__":

@@ -167,6 +167,8 @@ Cube runs as a second Compose service and reads the marts. Its data model is in 
 | Logs, e.g. after editing a cube | `docker compose logs -f cube` |
 | Run a saved query from the terminal | `python semantic/query.py semantic/queries/top_saturated.json` |
 | List all metrics | `python semantic/query.py --meta` |
+| Ask the analyst agent (terminal) | `python -m pipeline.agents.analyst "Which components are most saturated?"` |
+| Chat with the analyst agent (browser, saved chats in `app/chats/`) | `streamlit run app/streamlit_app.py` |
 
 - Cube reaches Postgres on `postgres:5432` (service name, port inside the Docker network), not `localhost:5433`.
 - In dev mode, cube files are reloaded on save. No restart needed.
