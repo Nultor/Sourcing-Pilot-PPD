@@ -9,6 +9,7 @@ select
     'site_bom' as bom_source
 from {{ ref('stg_site_bom_moq') }}
 
+-- union all places the rows of the next select below the first list.
 union all
 
 -- an NPD that has reached the plant BOM is taken from there only

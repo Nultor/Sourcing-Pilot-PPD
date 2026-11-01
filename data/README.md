@@ -185,6 +185,7 @@ Cube runs as a second Compose service and reads the marts. Its data model is in 
 | `brew install` compiles for ages | The Intel Homebrew in `/usr/local` is being used. Install with `/opt/homebrew/bin/brew install ...` instead. |
 | Container not `healthy` | `docker compose logs postgres` |
 | `additional properties 'cube' not allowed` | A service in `docker-compose.yml` is outside `services:`. Each service must be indented under it. |
+| Docker Desktop icon does nothing; `docker` commands give `500 Internal Server Error` | The Docker VM got stuck after Resource Saver paused it (backend log: `no route to host`). Quit Docker completely and open it again: `osascript -e 'quit app "Docker Desktop"'; pkill -f /Applications/Docker.app; open -a Docker`, then `docker compose up -d`. |
 | Loader: `cannot drop table raw.... because other objects depend on it` | dbt views are built on the raw tables. The loader now drops tables with `CASCADE` (this removes the dbt views too); run `dbt build` again afterwards. |
 
 **psql 16 client setup (one-time, Apple Silicon):**
