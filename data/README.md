@@ -190,6 +190,7 @@ Cube runs as a second Compose service and reads the marts. Its data model is in 
 | Container not `healthy` | `docker compose logs postgres` |
 | `additional properties 'cube' not allowed` | A service in `docker-compose.yml` is outside `services:`. Each service must be indented under it. |
 | Docker Desktop icon does nothing; `docker` commands give `500 Internal Server Error` | The Docker VM got stuck after Resource Saver paused it (backend log: `no route to host`). Quit Docker completely and open it again: `osascript -e 'quit app "Docker Desktop"'; pkill -f /Applications/Docker.app; open -a Docker`, then `docker compose up -d`. |
+| `dbt docs serve`: page doesn't open / `Address already in use` | Port 8080 is taken by another program (e.g. a Vite dev server). Use another port: `dbt docs serve --profiles-dir . --port 8081`. Run `dbt docs generate` first. |
 | Loader: `cannot drop table raw.... because other objects depend on it` | dbt views are built on the raw tables. The loader now drops tables with `CASCADE` (this removes the dbt views too); run `dbt build` again afterwards. |
 
 **psql 16 client setup (one-time, Apple Silicon):**

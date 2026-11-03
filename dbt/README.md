@@ -17,7 +17,10 @@ From the `dbt/` folder (the database must be running, see `data/README.md`):
 ```bash
 ../.venv/bin/dbt build --profiles-dir .   # seeds, models and tests, in dependency order
 ../.venv/bin/dbt build --profiles-dir . --select fct_saturation+   # one model and its tests
+../.venv/bin/dbt docs generate --profiles-dir .                     # build the docs site (models, columns, tests, lineage)
+../.venv/bin/dbt docs serve --profiles-dir . --port 8081            # open it at http://localhost:8081
 ```
+In the docs site, the blue icon at the bottom right shows the lineage graph (raw → staging → intermediate → marts). `--port 8081` because 8080 is often taken by another dev server; any free port works.
 Models land in schemas `analytics_staging`, `analytics_intermediate` and `analytics_marts`.
 
 ## What each layer handles

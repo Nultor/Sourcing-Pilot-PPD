@@ -20,6 +20,18 @@
 | Tests (free) | `tests/README.md` | `pytest` |
 | Agent evals (cost API calls) | `evals/README.md` | `pytest evals --run-llm` |
 
+### Look at the data and the marts
+
+Docker must be running (`docker compose up -d`). Each tool shows something different:
+
+| You want to see… | Tool | How |
+|---|---|---|
+| **The rows** of a table (values, sorting, filtering, export to Excel) | DBeaver or TablePlus | Connect to `localhost`, port **`5433`**, database `sourcing_pilot`, user and password from `.env` (details in `data/README.md` §4). Then open `analytics_marts` → `fct_saturation` → **Data** tab, or run SQL in the SQL editor. |
+| **Charts** of the metrics (e.g. saturation per quarter for one component) | Cube Playground | Open **http://localhost:4000**. Pick measures (e.g. *Saturation Baseline Saturation*), a dimension (*Saturation Forecast Quarter*), a filter (*Saturation Ac Code* equals `366413968`), click **Run**, then switch the view to **Line**. These are the same numbers the agent sees. |
+| **How the tables connect** (lineage), column types, descriptions, tests and SQL of every model | dbt docs | `cd dbt && dbt docs generate --profiles-dir . && dbt docs serve --profiles-dir . --port 8081`, then open **http://localhost:8081**. The round icon at the bottom right shows the lineage graph. |
+
+dbt docs shows the **structure** of the tables (columns, types, tests, lineage), never the **data** inside them. To see values, use DBeaver or the Cube Playground.
+
 ---
 
 ## 1. The problem
