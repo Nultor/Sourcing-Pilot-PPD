@@ -22,7 +22,7 @@
 
 ### Look at the data and the marts
 
-Docker must be running (`docker compose up -d`). Each tool shows something different:
+Docker must be running (`docker compose up -d`). **I use DBeaver to look at and test the data:** exploring raw, staging and mart tables, comparing them with the `ground_truth` schema, and trying queries by hand before they go into a dbt model (and checking the result after `dbt build`, F5 to refresh). Staging and intermediate models are **views** (DBeaver: schema → *Views*), marts are **tables** (schema → *Tables*). Each tool shows something different:
 
 | You want to see… | Tool | How |
 |---|---|---|
@@ -311,6 +311,7 @@ Opportunity / saturation analysis (xlsx) · Business case (pptx) · RFQ letter (
 | Language / env | Python 3.12, `uv` |
 | Infra | Docker Compose (Postgres, Cube, Langfuse) |
 | Data | PostgreSQL 16, dbt-core + dbt-postgres, Faker / numpy |
+| Database client (explore, visualise, test queries) | DBeaver Community |
 | Semantic layer | Cube Core (self-hosted) |
 | Orchestration | LangGraph (+ Postgres checkpointer) |
 | LLM (phase 1) | OpenAI via `langchain-openai` |
