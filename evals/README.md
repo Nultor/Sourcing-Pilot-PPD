@@ -31,13 +31,13 @@ assert ('high', '2027Q1') == ('medium', '2027Q1')
          └ agent's answer     └ ground truth
 ```
 
-**Last score: 10–11 of 16.** First breach right every time; severity often wrong (`high` instead of `medium`, missed `early_warning`). The cases that fail change between runs.
+**Score history:** 10–11/16 when the agent applied the severity rule itself → 12–13/16 with a clearer prompt → **16/16** once severity was calculated in dbt (`fct_quarters_to_breach`) and the agent only reads it. See `pipeline/README.md` for details.
 
 ## Using the score
 
 - Run it **before and after** every change to the agent (prompt, model, tools) and compare the pass counts. Run it 2–3 times if the difference is small.
 - To compare models: set `OPENAI_MODEL` in `.env`, run, compare.
-- When a new mart or tool should fix a kind of mistake, the score should show it. For example, `fct_quarters_to_breach` should take the severity cases to 16/16.
+- When a new mart or tool should fix a kind of mistake, the score should show it. Example: `fct_quarters_to_breach` took the severity cases from 12–13 to 16/16.
 
 ## Adding an eval
 

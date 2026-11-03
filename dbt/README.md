@@ -23,6 +23,8 @@ From the `dbt/` folder (the database must be running, see `data/README.md`):
 In the docs site, the blue icon at the bottom right shows the lineage graph (raw → staging → intermediate → marts). `--port 8081` because 8080 is often taken by another dev server; any free port works.
 Models land in schemas `analytics_staging`, `analytics_intermediate` and `analytics_marts`.
 
+The thresholds are dbt variables in `dbt_project.yml` (`warn_threshold: 0.85`, `critical_threshold: 1.0`), used as `{{ var('warn_threshold') }}`.
+
 ## What each layer handles
 | Model | Cleaning |
 |---|---|
@@ -41,6 +43,7 @@ Models land in schemas `analytics_staging`, `analytics_intermediate` and `analyt
 | `int_bom` | plant BOM + NPD BOMs (new products aren't in the plant BOM until they launch) |
 | `int_line_capacity` | flags capacity typed as a **monthly** figure (production above it in most past quarters) and x3 it |
 | `fct_saturation` | demand per AC vs baseline capacity, and vs stretch capacity (+ qualified CMs only) |
+| `fct_quarters_to_breach` | one row per AC: severity, first breach quarter (baseline > `warn_threshold`), quarters to breach, quarters over threshold, worst shortfall in pieces, recommended action. Same severity rule as the data generator; checked against every planted case (`tests/assert_breach_matches_planted_cases.sql`) |
 
 New supplier spelling? Add a lowercase row to `seeds/supplier_alias_map.csv`. The `not_null` tests on `supplier`, prices and units (`models/staging/_staging.yml`) fail when raw data brings a spelling, currency or unit the rules don't know yet.
 

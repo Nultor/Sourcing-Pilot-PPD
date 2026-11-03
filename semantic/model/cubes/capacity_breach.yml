@@ -1,0 +1,90 @@
+# Breach summary per component (AC): severity, first breach, quarters to breach, shortfall
+# (README §3.1). Built on the dbt mart fct_quarters_to_breach, one row per snapshot x AC.
+#
+# Two cubes on the same mart, like saturation.yml:
+#   capacity_breach          latest snapshot only. Default for agents.
+#   capacity_breach_history  every snapshot, to compare quarters. Always group or filter
+#                            by snapshot_quarter.
+#
+# Severity is calculated in dbt, never by the agent. It says whether qualified CMs can
+# absorb the extra demand (medium) or not (high), not how high the saturation is.
+
+cubes:
+  - name: capacity_breach_history
+    sql_table: analytics_marts.fct_quarters_to_breach
+    description: Breach summary per component, every data snapshot.
+
+    dimensions:
+      - name: breach_key
+        sql: breach_key
+        type: string
+        primary_key: true
+        public: false
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+        description: Quarter of the data extract the numbers come from, e.g. 2026Q4.
+      - name: ac_code
+        sql: ac_code
+        type: string
+        description: Packaging component (AC) code.
+      - name: severity
+        sql: severity
+        type: string
+        description: >
+          none | temporary_spike (one quarter over 0.85) | high (even all qualified CMs are not
+          enough) | medium (qualified CMs can absorb it) | early_warning (breach 5+ quarters away).
+      - name: recommended_action
+        sql: recommended_action
+        type: string
+        description: What a sourcer should do for this severity.
+      - name: first_breach_quarter
+        sql: first_breach_quarter
+        type: string
+        description: First forecast quarter with baseline saturation above 0.85 (empty if none).
+      - name: first_critical_quarter
+        sql: first_critical_quarter
+        type: string
+        description: First forecast quarter with baseline saturation above 1.0 (empty if none).
+      - name: quarters_to_breach
+        sql: quarters_to_breach
+        type: number
+        description: Quarters from the snapshot to the first breach (1 = next quarter).
+      - name: n_quarters_baseline_over
+        sql: n_quarters_baseline_over
+        type: number
+        description: Number of forecast quarters with baseline saturation above 0.85.
+      - name: n_quarters_stretch_over
+        sql: n_quarters_stretch_over
+        type: number
+        description: Number of forecast quarters with stretch saturation above 0.85.
+
+    measures:
+      - name: component_count
+        type: count
+        description: Number of components.
+      - name: peak_baseline_saturation
+        sql: peak_baseline_saturation
+        type: max
+        format: percent
+        description: Worst single-quarter baseline saturation.
+      - name: peak_stretch_saturation
+        sql: peak_stretch_saturation
+        type: max
+        format: percent
+        description: Worst single-quarter stretch saturation.
+      - name: peak_baseline_shortfall
+        sql: peak_baseline_shortfall
+        type: max
+        description: Pieces per quarter the current lines can't make, in the worst quarter.
+      - name: peak_stretch_shortfall
+        sql: peak_stretch_shortfall
+        type: max
+        description: Pieces per quarter even lines + qualified CMs can't make (stretch demand), worst quarter.
+
+  - name: capacity_breach
+    extends: capacity_breach_history
+    sql: >
+      SELECT * FROM analytics_marts.fct_quarters_to_breach
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.fct_quarters_to_breach)
+    description: Breach summary per component, latest data snapshot only.

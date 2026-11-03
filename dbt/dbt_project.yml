@@ -8,3 +8,6 @@ models:
     staging:      { +schema: staging,      +materialized: view }
     intermediate: { +schema: intermediate, +materialized: view }
     marts:        { +schema: marts,        +materialized: table }
+vars:
+  warn_threshold: 0.85       # saturation above this is a warning (README §3.1, data_gen/config.py)
+  critical_threshold: 1.0    # above this, demand exceeds capacity

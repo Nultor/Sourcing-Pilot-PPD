@@ -61,6 +61,52 @@ def compare_snapshots(ac_code: str) -> list[dict]:
     })
 
 
+BREACH_FIELDS = [
+    "capacity_breach.ac_code",
+    "capacity_breach.severity",
+    "capacity_breach.recommended_action",
+    "capacity_breach.first_breach_quarter",
+    "capacity_breach.quarters_to_breach",
+    "capacity_breach.first_critical_quarter",
+    "capacity_breach.n_quarters_baseline_over",
+    "capacity_breach.n_quarters_stretch_over",
+]
+BREACH_MEASURES = [
+    "capacity_breach.peak_baseline_saturation",
+    "capacity_breach.peak_stretch_saturation",
+    "capacity_breach.peak_baseline_shortfall",
+    "capacity_breach.peak_stretch_shortfall",
+]
+
+
+@tool
+def get_capacity_breaches() -> list[dict]:
+    """Every component (AC) with a capacity problem in the latest snapshot, soonest breach first.
+
+    Severity, first breach quarter, quarters to breach, recommended action and worst shortfall
+    are already calculated (dbt); use them as they are. Components without a problem
+    (severity none) are left out. Use this for "which components breach / need action".
+    """
+    return load({
+        "dimensions": BREACH_FIELDS,
+        "measures": BREACH_MEASURES,
+        "filters": [{"member": "capacity_breach.severity", "operator": "notEquals", "values": ["none"]}],
+        "order": {"capacity_breach.quarters_to_breach": "asc", "capacity_breach.peak_baseline_saturation": "desc"},
+    })
+
+
+@tool
+def get_component_breach(ac_code: str) -> list[dict]:
+    """Breach summary of one component (AC) in the latest snapshot: severity, recommended action,
+    first breach quarter, quarters to breach, quarters over threshold, worst shortfall.
+    Already calculated (dbt); use it as it is. Empty if the component is unknown."""
+    return load({
+        "dimensions": BREACH_FIELDS,
+        "measures": BREACH_MEASURES,
+        "filters": [{"member": "capacity_breach.ac_code", "operator": "equals", "values": [ac_code]}],
+    })
+
+
 # --- Generic fallback: for questions no named tool covers ----------------------------
 
 @tool
@@ -103,11 +149,14 @@ def query_metric(
     return load({key: value for key, value in query.items() if value})
 
 
-CUBE_TOOLS = [get_top_saturated, get_component_timeline, compare_snapshots, list_metrics, query_metric]
+CUBE_TOOLS = [get_capacity_breaches, get_component_breach, get_top_saturated, get_component_timeline,
+              compare_snapshots, list_metrics, query_metric]
 
 
 if __name__ == "__main__":
     print(get_top_saturated.invoke({"limit": 3}), "\n")
     print(get_component_timeline.invoke({"ac_code": "366413968"}), "\n")
     print(compare_snapshots.invoke({"ac_code": "369576663"}), "\n")
+    print(get_capacity_breaches.invoke({})[:2], "\n")
+    print(get_component_breach.invoke({"ac_code": "362419787"}), "\n")
     print(query_metric.invoke({"measures": ["saturation.wrong_name"]}))   # should print "Unknown names"

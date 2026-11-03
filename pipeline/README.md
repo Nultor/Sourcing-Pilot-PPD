@@ -56,6 +56,8 @@ This runs each tool once against Cube and prints the rows. It costs nothing and 
 
 | Tool | Answers | Cube |
 |---|---|---|
+| `get_capacity_breaches()` | Every component with a capacity problem: severity, first breach, quarters to breach, action, shortfall. Soonest first. | `capacity_breach` |
+| `get_component_breach(ac_code)` | The same for one component | `capacity_breach` |
 | `get_top_saturated(scenario, limit)` | Which components are most saturated (worst quarter), worst first? `scenario` is `baseline` or `stretch`. | `saturation` |
 | `get_component_timeline(ac_code)` | One component quarter by quarter: demand, capacity, saturation | `saturation` |
 | `compare_snapshots(ac_code)` | One component across data snapshots (e.g. 2026Q3 vs 2026Q4) | `saturation_history` |
@@ -92,7 +94,7 @@ question →│  agent (LLM) │ ───────────────�
                answer
 ```
 
-- **`SYSTEM_PROMPT`**: the role, the saturation definitions and the **severity rules**. These are the same rules the data generator uses to label the planted cases (`data_gen/saturation.py`, `classify`), so answers can be checked against the ground truth.
+- **`SYSTEM_PROMPT`**: the role, the saturation definitions and **what each severity label means** for a sourcer (with its action). The agent does **not** calculate severity: it reads it from the breach tools, which get it from the dbt mart `fct_quarters_to_breach`. Numbers in code, explanation by the LLM.
 - **`build_graph()`**: builds the graph above.
 - **`run(history)`**: runs the agent on a whole conversation and yields each tool call, then the answer. The Streamlit app uses this.
 - **`ask(question)`**: one question in, answer out. Used by the terminal command and the evals.
@@ -107,7 +109,13 @@ Measure it with the eval (costs API calls, see `evals/README.md`):
 pytest evals --run-llm
 ```
 
-Last score: **10–11 of 16** planted cases. The first breach quarter is always right; the severity label is often wrong (it counts quarters over the threshold unreliably). The fix planned is a `fct_quarters_to_breach` mart that calculates severity in dbt, so the agent only reads it.
+Score history (16 planted cases):
+
+| Version | Score | What changed |
+|---|---|---|
+| v1: agent reads timelines and applies the rule itself | 10–11 / 16 | First breach right, severity often wrong: it confused "high" with "large number" and miscounted quarters |
+| v2: prompt explains what each label means + step-by-step rule | 12–13 / 16 | `high` vs `medium` mostly fixed; still misses `early_warning` (counting positions) |
+| **v3: severity calculated in dbt (`fct_quarters_to_breach`), agent reads it** | **16 / 16** (twice) | The broad question "which components breach?" also went from 1 + 10 tool calls with half the labels wrong to 1 call, all 14 right |
 
 ## Troubleshooting
 

@@ -1,4 +1,4 @@
-"""The agent's Cube tools (pipeline/tools/cube.py) on the saturation mart.
+"""The agent's Cube tools (pipeline/tools/cube.py) on the saturation and breach marts.
 
 Checks that each named tool runs the query it promises, and that the generic fallback
 rejects names Cube doesn't know. Needs loaded data and Cube up; skips otherwise.
@@ -6,8 +6,8 @@ rejects names Cube doesn't know. Needs loaded data and Cube up; skips otherwise.
 import pytest
 from pydantic import ValidationError
 
-from pipeline.tools.cube import (compare_snapshots, get_component_timeline, get_top_saturated, list_metrics,
-                                 query_metric)
+from pipeline.tools.cube import (compare_snapshots, get_capacity_breaches, get_component_breach,
+                                 get_component_timeline, get_top_saturated, list_metrics, query_metric)
 from tests.ground_truth import LATEST, SNAPSHOTS, ground_truth
 
 pytestmark = pytest.mark.usefixtures("cube")
@@ -71,3 +71,23 @@ def test_query_metric_runs_a_valid_query():
 def test_query_metric_rejects_unknown_names(query):
     result = query_metric.invoke(query)
     assert isinstance(result, str) and result.startswith("Unknown names")
+
+
+def test_capacity_breaches_lists_every_planted_problem_soonest_first():
+    cases = ground_truth(LATEST, "planted_cases.csv")
+    rows = get_capacity_breaches.invoke({})
+    assert {r["capacity_breach.ac_code"] for r in rows} == set(cases[cases.severity != "none"].ac_code)
+    assert all(r["capacity_breach.severity"] != "none" for r in rows)
+    quarters = [int(r["capacity_breach.quarters_to_breach"]) for r in rows]
+    assert quarters == sorted(quarters)
+
+
+def test_component_breach_returns_the_planted_severity():
+    case = ground_truth(LATEST, "planted_cases.csv").query("case == 'baseline_only'").iloc[0]
+    [row] = get_component_breach.invoke({"ac_code": case.ac_code})
+    assert row["capacity_breach.severity"] == case.severity
+    assert row["capacity_breach.recommended_action"]
+
+
+def test_component_breach_of_unknown_component_is_empty():
+    assert get_component_breach.invoke({"ac_code": "000000000"}) == []

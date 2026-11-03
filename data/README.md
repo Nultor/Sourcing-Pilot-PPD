@@ -169,7 +169,7 @@ Cube runs as a second Compose service and reads the marts. Its data model is in 
 | List all metrics | `python semantic/query.py --meta` |
 | Ask the analyst agent (terminal) | `python -m pipeline.agents.analyst "Which components are most saturated?"` |
 | Chat with the analyst agent (browser, saved chats in `app/chats/`) | `streamlit run app/streamlit_app.py` |
-| Test the saturation mart through Cube + the agent tools (free, needs Docker) | `pytest tests/test_saturation_cube.py tests/test_cube_tools.py` |
+| Test the marts through Cube + the agent tools (free, needs Docker) | `pytest tests/test_saturation_cube.py tests/test_breach_cube.py tests/test_cube_tools.py` |
 | Score the analyst agent on the planted cases (costs API calls) | `pytest evals --run-llm` |
 
 - Cube reaches Postgres on `postgres:5432` (service name, port inside the Docker network), not `localhost:5433`.

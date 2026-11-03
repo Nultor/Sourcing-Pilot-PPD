@@ -30,7 +30,8 @@ A query is always: **which measures**, **grouped by which dimensions**, **filter
 semantic/
 ├── README.md              ← this file
 ├── model/cubes/           ← the metric definitions (YAML). Cube reads everything here.
-│   └── saturation.yml
+│   ├── saturation.yml       ← saturation per component and quarter (mart fct_saturation)
+│   └── capacity_breach.yml  ← severity, first breach, shortfall per component (mart fct_quarters_to_breach)
 ├── queries/               ← example queries (JSON) you can run with query.py
 ├── cube_client.py         ← the connection to Cube (token + request), used by query.py and the agents
 ├── query.py               ← run a query from the terminal
@@ -47,6 +48,23 @@ Both are built on the same dbt table, `analytics_marts.fct_saturation`. It has o
 | `saturation_history` | **All snapshots** | Comparing quarters: "did this component get better between Q3 and Q4?" |
 
 ⚠️ With `saturation_history`, always group or filter by `snapshot_quarter`. Otherwise the 2026Q3 and 2026Q4 rows are added together and the capacity looks twice as big. That's the whole reason `saturation` (latest only) exists.
+
+### The breach cubes (`capacity_breach.yml`)
+
+Built on `analytics_marts.fct_quarters_to_breach`, **one row per snapshot × component**. Same pattern: `capacity_breach` = latest snapshot, `capacity_breach_history` = all snapshots.
+
+| Member | Type | What it is |
+|---|---|---|
+| `severity` | dimension | `none`, `temporary_spike`, `medium` (qualified CMs can absorb it), `high` (even all qualified CMs are not enough), `early_warning` (breach 5+ quarters away) |
+| `recommended_action` | dimension | What a sourcer should do for that severity |
+| `first_breach_quarter` / `first_critical_quarter` | dimension | First quarter with baseline saturation above 0.85 / above 1.0 |
+| `quarters_to_breach` | dimension | Quarters from the snapshot to the first breach (1 = next quarter) |
+| `n_quarters_baseline_over` / `n_quarters_stretch_over` | dimension | Quarters above 0.85 |
+| `peak_baseline_saturation` / `peak_stretch_saturation` | measure | Worst quarter |
+| `peak_baseline_shortfall` / `peak_stretch_shortfall` | measure | Pieces per quarter that can't be made, worst quarter |
+| `component_count` | measure | Number of components |
+
+⚠️ `severity` is **not** about how high the saturation is: a component at 160% baseline is `medium` when the qualified CMs can absorb it. The severity is calculated in dbt; agents only read it.
 
 ## Metrics
 

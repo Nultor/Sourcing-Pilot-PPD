@@ -6,7 +6,7 @@ Automated checks, run with **pytest** from the **repo root**. They are free (no 
 
 ```bash
 pytest                                                      # everything in tests/
-pytest tests/test_saturation_cube.py tests/test_cube_tools.py   # only the saturation mart, Cube and tools (< 1 s)
+pytest tests/test_saturation_cube.py tests/test_breach_cube.py tests/test_cube_tools.py   # only the marts, Cube and tools (< 1 s)
 pytest tests/test_data_gen.py                               # only the synthetic data generator
 pytest -k timeline                                          # only tests whose name contains "timeline"
 pytest -v                                                   # one line per test, with its name
@@ -25,8 +25,8 @@ If there is no generated data or Cube isn't reachable, those tests are **skipped
 | Layer | Tested by | Checks |
 |---|---|---|
 | Synthetic data | `tests/test_data_gen.py` | The generator: code formats, planted issues, snapshots |
-| dbt models + mart | `dbt build` (in `dbt/`) | Grain and not-null tests (`_staging.yml`, `_marts.yml`); `fct_saturation` row by row vs the ground truth (`dbt/tests/`) |
-| Cube (on the mart) | `tests/test_saturation_cube.py` | See below |
+| dbt models + marts | `dbt build` (in `dbt/`) | Grain, not-null and accepted-values tests (`_staging.yml`, `_marts.yml`); `fct_saturation` row by row and `fct_quarters_to_breach` per planted case vs the ground truth (`dbt/tests/`) |
+| Cube (on the marts) | `tests/test_saturation_cube.py`, `tests/test_breach_cube.py` | See below |
 | Agent tools | `tests/test_cube_tools.py` | See below |
 | The agent itself (LLM) | `evals/` | Does it label the planted cases right? |
 
@@ -40,6 +40,10 @@ If there is no generated data or Cube isn't reachable, those tests are **skipped
 | `..._total_demand_over_total_capacity` | Over several quarters Cube divides totals (sum ÷ sum), never averages ratios |
 | `test_peaks_match_planted_cases` | Worst-quarter values match `planted_cases.csv` |
 | `..._reproduce_from_cube` | The generator's severity rule applied to Cube's numbers gives exactly the planted labels. If this passes but the agent is wrong, the agent is the problem, not the data. |
+
+### `test_breach_cube.py`: the breach mart through Cube
+
+`capacity_breach` holds only the latest snapshot and one row per component; severity, first breach and peaks match `planted_cases.csv` in every snapshot; `quarters_to_breach` counts from the snapshot (next quarter = 1); peaks agree with the `saturation` cube.
 
 ### `test_cube_tools.py`: the agent's tools
 

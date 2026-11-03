@@ -25,3 +25,30 @@ models:
         data_tests: [not_null]
       - name: stretch_saturation
         data_tests: [not_null]
+
+  - name: fct_quarters_to_breach
+    description: >
+      Breach summary per component (AC): first quarter above the warning threshold (0.85),
+      quarters until then, how many quarters are over, worst shortfall in pieces, and the
+      severity + recommended action. Severity says whether qualified CMs can absorb the extra
+      demand (medium) or not (high), not how high the saturation is.
+    columns:
+      - name: breach_key
+        description: snapshot_quarter | ac_code (the grain)
+        data_tests: [unique, not_null]
+      - name: severity
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [none, temporary_spike, medium, high, early_warning]
+      - name: recommended_action
+        data_tests: [not_null]
+      - name: quarters_to_breach
+        description: Quarters from the snapshot to the first breach (1 = next quarter); null if no breach.
+      - name: peak_baseline_shortfall
+        description: Pieces per quarter the current lines can't make, in the worst quarter (0 if none).
+        data_tests: [not_null]
+      - name: peak_stretch_shortfall
+        description: Pieces per quarter even lines + qualified CMs can't make (stretch demand), worst quarter.
+        data_tests: [not_null]
