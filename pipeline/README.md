@@ -61,6 +61,16 @@ This runs each tool once against Cube and prints the rows. It costs nothing and 
 | `get_top_saturated(scenario, limit)` | Which components are most saturated (worst quarter), worst first? `scenario` is `baseline` or `stretch`. | `saturation` |
 | `get_component_timeline(ac_code)` | One component quarter by quarter: demand, capacity, saturation | `saturation` |
 | `compare_snapshots(ac_code)` | One component across data snapshots (e.g. 2026Q3 vs 2026Q4) | `saturation_history` |
+| `get_component_info(ac_code)` | What a component is (family, material, size, brand, new or not) and every product that uses it, with hero and launch flags | `component`, `product_component`, `product` |
+| `get_products_at_risk(severities, hero_only)` | Which products use a component with a capacity problem, soonest breach first. Default severities: high, medium, early_warning | `product_component` → `product`, `component`, `capacity_breach` |
+
+| `get_total_volume_at_risk()` | The business-case answer: products affected, units, revenue, contribution, launch units without price; total and per year, baseline and stretch, without CMs | `product_volume_at_risk` |
+| `get_volume_at_risk(ac_code=None)` | Per component, what its shortfall costs (worst first); with `ac_code`, `{total, per_product}` | `volume_at_risk` |
+| `get_product_volume_at_risk(pf_code=None, hero_only)` | Per product, what it loses (worst first); with `pf_code`, `{total, per_quarter}` with the limiting component | `product_volume_at_risk` |
+
+Tools for **one** component or product return the **total** next to the breakdown. With only the breakdown, the agent added up euros itself (or picked one row) and got it wrong: the value-at-risk eval went from 13/15 to 15/15 with this change.
+
+`get_capacity_breaches` and `get_component_breach` also return the component's description, family, `used_by_hero` and `n_products_using`.
 
 **Generic fallback**, for questions no named tool covers:
 

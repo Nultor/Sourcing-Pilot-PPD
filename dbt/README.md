@@ -43,8 +43,16 @@ The thresholds are dbt variables in `dbt_project.yml` (`warn_threshold: 0.85`, `
 | `int_bom` | plant BOM + NPD BOMs (new products aren't in the plant BOM until they launch) |
 | `int_line_capacity` | flags capacity typed as a **monthly** figure (production above it in most past quarters) and x3 it |
 | `fct_saturation` | demand per AC vs baseline capacity, and vs stretch capacity (+ qualified CMs only) |
+| `int_component_enriched` | component master with blanks filled from other sources, only where the family should have the value (`seeds/component_families.csv`) and the source gives one answer: brand and size via BOM -> product, material via site BOM -> description (`Jar glass 500ml`) -> previous snapshot. Flags `is_*_recovered`, `material_source` |
+| `dim_product` | one row per PF: brand, format, hero (finance business driver), NPD + launch quarter. Products on sale from sales history, launches from `npd_projects`. Checked against the truth (`tests/assert_dim_product_matches_truth.sql`) |
+| `dim_component` | one row per AC: `int_component_enriched` + `n_products_using`, `used_by_hero`, `is_new`. Checked against the truth (`tests/assert_dim_component_matches_truth.sql`) |
+| `bridge_product_component` | the BOM as a mart (PF x AC), so Cube can link components to products |
+| `int_pf_price` | selling price per PF: net sales / units over the latest `price_history_quarters` (4) history quarters. Launches have no price |
+| `int_pf_packaging_cost` | packaging cost per PF: std price (latest fiscal year) x pieces per PF over its BOM. Null when a component has no std price yet (new components) |
+| `fct_volume_at_risk` | per AC x PF x quarter, **without CMs or investment**: component shortfall (demand - baseline capacity) split over its products by demand share, units / revenue / contribution (price - packaging cost) at risk, baseline and stretch. Tests: allocation adds back to the shortfall, inputs vs the truth |
+| `fct_product_volume_at_risk` | per PF x quarter: the largest loss over its components (not the sum), the binding component, euros. Safe to sum |
 | `fct_quarters_to_breach` | one row per AC: severity, first breach quarter (baseline > `warn_threshold`), quarters to breach, quarters over threshold, worst shortfall in pieces, recommended action. Same severity rule as the data generator; checked against every planted case (`tests/assert_breach_matches_planted_cases.sql`) |
 
 New supplier spelling? Add a lowercase row to `seeds/supplier_alias_map.csv`. The `not_null` tests on `supplier`, prices and units (`models/staging/_staging.yml`) fail when raw data brings a spelling, currency or unit the rules don't know yet.
 
-**Not handled in staging** (they need other sources, so they belong in intermediate models / the analyst agent): x10 price typos and expired PIRs in `erp_pir`, PIR vs site MOQ conflicts, component brand/size/material missing in `component_master` (recoverable via BOM -> PF), missing quarters in `site_production`.
+**Not handled in staging** (they need other sources, so they belong in intermediate models / the analyst agent): x10 price typos and expired PIRs in `erp_pir`, PIR vs site MOQ conflicts, component brand/size/material missing in `component_master` (recovered in `int_component_enriched`), missing quarters in `site_production`.

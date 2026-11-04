@@ -1,0 +1,12 @@
+family,is_brand_specific,is_sized
+Bottle,false,true
+Glass bottle,false,true
+Jar,false,true
+Jar lid,false,true
+Tube,true,true
+Refill pouch,true,true
+Label,true,false
+Folding carton,true,false
+Cap,false,false
+Pump,false,false
+Spray pump,false,false

@@ -1,0 +1,263 @@
+# Volume and value at risk WITHOUT CMs or investment (TODO.md item 2): "if I don't invest and
+# don't use CMs, how many products can't I make, and what is that worth?"
+# Built on the dbt marts fct_volume_at_risk and fct_product_volume_at_risk.
+#
+#   volume_at_risk          per component x product x quarter. Use it PER COMPONENT
+#                           ("what does the shortfall of AC X cost?"). Don't add components
+#                           up per product: a product short on two components would count twice.
+#   product_volume_at_risk  per product x quarter, the largest loss over its components.
+#                           Use it for products and for TOTALS ("how much in total?").
+#   *_history               every snapshot; always group or filter by snapshot_quarter.
+#
+# Revenue = units x selling price. Contribution = units x (price - packaging cost): before all
+# other costs, which aren't in the data. Launches (NPD) have no price: their units are counted,
+# their euros are unknown (units_without_price_*), never zero.
+
+cubes:
+  - name: volume_at_risk_history
+    sql_table: analytics_marts.fct_volume_at_risk
+    description: Units, revenue and contribution at risk per component x product x forecast quarter, without CMs or investment, every data snapshot.
+
+    joins:
+      - name: component_history
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {component_history.ac_code} AND {CUBE}.snapshot_quarter = {component_history.snapshot_quarter}"
+      - name: product_history
+        relationship: many_to_one
+        sql: "{CUBE}.pf_code = {product_history.pf_code} AND {CUBE}.snapshot_quarter = {product_history.snapshot_quarter}"
+      - name: capacity_breach_history
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {capacity_breach_history.ac_code} AND {CUBE}.snapshot_quarter = {capacity_breach_history.snapshot_quarter}"
+
+    dimensions:
+      - name: volume_at_risk_key
+        sql: volume_at_risk_key
+        type: string
+        primary_key: true
+        public: false
+      - name: ac_code
+        sql: ac_code
+        type: string
+        description: Packaging component (AC) code whose shortfall causes the loss.
+      - name: qty_per_pf
+        sql: qty_per_pf
+        type: number
+        description: Pieces of the component in one product.
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+        description: Quarter of the data extract, e.g. 2026Q4.
+      - name: pf_code
+        sql: pf_code
+        type: string
+        description: Finished product (PF) code.
+      - name: forecast_quarter
+        sql: forecast_quarter
+        type: string
+        description: Quarter the loss would happen in.
+      - name: forecast_year
+        sql: forecast_year
+        type: number
+        description: Year the loss would happen in.
+      - name: has_price
+        sql: has_price
+        type: boolean
+        description: False for launches (NPD) without sales history; their euros are unknown, not zero.
+      - name: price_eur_per_unit
+        sql: price_eur_per_unit
+        type: number
+        description: Selling price per product unit, EUR (net sales / units, last 4 history quarters).
+      - name: packaging_cost_eur_per_unit
+        sql: packaging_cost_eur_per_unit
+        type: number
+        description: Packaging cost per product unit, EUR (standard prices x BOM).
+
+    measures:
+      - name: units_at_risk_baseline
+        sql: units_at_risk_baseline
+        type: sum
+        format: number
+        description: Product units that can't be made WITHOUT CMs or investment, baseline forecast.
+      - name: units_at_risk_stretch
+        sql: units_at_risk_stretch
+        type: sum
+        description: Product units that can't be made WITHOUT CMs or investment, stretch (high) forecast.
+      - name: revenue_at_risk_baseline
+        sql: revenue_at_risk_baseline
+        type: sum
+        format: currency
+        description: Units at risk x selling price (net sales / units, last 4 quarters), EUR, baseline. Excludes launches (no price).
+      - name: revenue_at_risk_stretch
+        sql: revenue_at_risk_stretch
+        type: sum
+        format: currency
+        description: The same for the stretch forecast, EUR.
+      - name: contribution_at_risk_baseline
+        sql: contribution_at_risk_baseline
+        type: sum
+        format: currency
+        description: Units at risk x (price - packaging cost), EUR, baseline. Before ALL other costs (liquid, labour, logistics, overheads are not in the data).
+      - name: contribution_at_risk_stretch
+        sql: contribution_at_risk_stretch
+        type: sum
+        format: currency
+        description: The same for the stretch forecast, EUR.
+      - name: units_without_price_baseline
+        sql: "CASE WHEN {CUBE}.has_price THEN 0 ELSE {CUBE}.units_at_risk_baseline END"
+        type: sum
+        description: Units at risk of launches (NPD) without a selling price, so not in the euro figures, baseline.
+      - name: units_without_price_stretch
+        sql: "CASE WHEN {CUBE}.has_price THEN 0 ELSE {CUBE}.units_at_risk_stretch END"
+        type: sum
+        description: The same for the stretch forecast.
+
+  - name: volume_at_risk
+    extends: volume_at_risk_history
+    sql: >
+      SELECT * FROM analytics_marts.fct_volume_at_risk
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.fct_volume_at_risk)
+    description: Units, revenue and contribution at risk per component x product x forecast quarter, without CMs or investment, latest data snapshot only.
+
+    joins:
+      - name: component
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {component.ac_code} AND {CUBE}.snapshot_quarter = {component.snapshot_quarter}"
+      - name: product
+        relationship: many_to_one
+        sql: "{CUBE}.pf_code = {product.pf_code} AND {CUBE}.snapshot_quarter = {product.snapshot_quarter}"
+      - name: capacity_breach
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {capacity_breach.ac_code} AND {CUBE}.snapshot_quarter = {capacity_breach.snapshot_quarter}"
+
+  - name: product_volume_at_risk_history
+    sql_table: analytics_marts.fct_product_volume_at_risk
+    description: Units, revenue and contribution at risk per product x forecast quarter (largest loss over its components), without CMs or investment, every data snapshot.
+
+    joins:
+      - name: product_history
+        relationship: many_to_one
+        sql: "{CUBE}.pf_code = {product_history.pf_code} AND {CUBE}.snapshot_quarter = {product_history.snapshot_quarter}"
+
+    dimensions:
+      - name: product_volume_at_risk_key
+        sql: product_volume_at_risk_key
+        type: string
+        primary_key: true
+        public: false
+      - name: binding_ac_code_baseline
+        sql: binding_ac_code_baseline
+        type: string
+        description: The component that limits the product most in the quarter (baseline); empty if none.
+      - name: binding_ac_code_stretch
+        sql: binding_ac_code_stretch
+        type: string
+        description: The same for the stretch forecast.
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+        description: Quarter of the data extract, e.g. 2026Q4.
+      - name: pf_code
+        sql: pf_code
+        type: string
+        description: Finished product (PF) code.
+      - name: forecast_quarter
+        sql: forecast_quarter
+        type: string
+        description: Quarter the loss would happen in.
+      - name: forecast_year
+        sql: forecast_year
+        type: number
+        description: Year the loss would happen in.
+      - name: has_price
+        sql: has_price
+        type: boolean
+        description: False for launches (NPD) without sales history; their euros are unknown, not zero.
+      - name: price_eur_per_unit
+        sql: price_eur_per_unit
+        type: number
+        description: Selling price per product unit, EUR (net sales / units, last 4 history quarters).
+      - name: packaging_cost_eur_per_unit
+        sql: packaging_cost_eur_per_unit
+        type: number
+        description: Packaging cost per product unit, EUR (standard prices x BOM).
+
+    measures:
+      - name: units_at_risk_baseline
+        sql: units_at_risk_baseline
+        type: sum
+        format: number
+        description: Product units that can't be made WITHOUT CMs or investment, baseline forecast.
+      - name: units_at_risk_stretch
+        sql: units_at_risk_stretch
+        type: sum
+        description: Product units that can't be made WITHOUT CMs or investment, stretch (high) forecast.
+      - name: revenue_at_risk_baseline
+        sql: revenue_at_risk_baseline
+        type: sum
+        format: currency
+        description: Units at risk x selling price (net sales / units, last 4 quarters), EUR, baseline. Excludes launches (no price).
+      - name: revenue_at_risk_stretch
+        sql: revenue_at_risk_stretch
+        type: sum
+        format: currency
+        description: The same for the stretch forecast, EUR.
+      - name: contribution_at_risk_baseline
+        sql: contribution_at_risk_baseline
+        type: sum
+        format: currency
+        description: Units at risk x (price - packaging cost), EUR, baseline. Before ALL other costs (liquid, labour, logistics, overheads are not in the data).
+      - name: contribution_at_risk_stretch
+        sql: contribution_at_risk_stretch
+        type: sum
+        format: currency
+        description: The same for the stretch forecast, EUR.
+      - name: units_without_price_baseline
+        sql: "CASE WHEN {CUBE}.has_price THEN 0 ELSE {CUBE}.units_at_risk_baseline END"
+        type: sum
+        description: Units at risk of launches (NPD) without a selling price, so not in the euro figures, baseline.
+      - name: units_without_price_stretch
+        sql: "CASE WHEN {CUBE}.has_price THEN 0 ELSE {CUBE}.units_at_risk_stretch END"
+        type: sum
+        description: The same for the stretch forecast.
+      - name: forecast_units_baseline
+        sql: pf_qty_baseline
+        type: sum
+        description: Forecast product units, baseline.
+      - name: forecast_units_stretch
+        sql: pf_qty_stretch
+        type: sum
+        description: Forecast product units, stretch.
+      - name: share_at_risk_baseline
+        type: number
+        format: percent
+        sql: "{units_at_risk_baseline} / NULLIF({forecast_units_baseline}, 0)"
+        description: Units at risk / forecast units, baseline.
+      - name: share_at_risk_stretch
+        type: number
+        format: percent
+        sql: "{units_at_risk_stretch} / NULLIF({forecast_units_stretch}, 0)"
+        description: Units at risk / forecast units, stretch.
+      - name: products_at_risk_baseline
+        sql: pf_code
+        type: count_distinct
+        filters:
+          - sql: "{CUBE}.units_at_risk_baseline > 0"
+        description: Number of products losing units in the selection, baseline.
+      - name: products_at_risk_stretch
+        sql: pf_code
+        type: count_distinct
+        filters:
+          - sql: "{CUBE}.units_at_risk_stretch > 0"
+        description: Number of products losing units in the selection, stretch.
+
+  - name: product_volume_at_risk
+    extends: product_volume_at_risk_history
+    sql: >
+      SELECT * FROM analytics_marts.fct_product_volume_at_risk
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.fct_product_volume_at_risk)
+    description: Units, revenue and contribution at risk per product x forecast quarter (largest loss over its components), without CMs or investment, latest data snapshot only.
+
+    joins:
+      - name: product
+        relationship: many_to_one
+        sql: "{CUBE}.pf_code = {product.pf_code} AND {CUBE}.snapshot_quarter = {product.snapshot_quarter}"

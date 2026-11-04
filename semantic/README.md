@@ -31,7 +31,11 @@ semantic/
 ├── README.md              ← this file
 ├── model/cubes/           ← the metric definitions (YAML). Cube reads everything here.
 │   ├── saturation.yml       ← saturation per component and quarter (mart fct_saturation)
-│   └── capacity_breach.yml  ← severity, first breach, shortfall per component (mart fct_quarters_to_breach)
+│   ├── capacity_breach.yml  ← severity, first breach, shortfall per component (mart fct_quarters_to_breach)
+│   ├── component.yml        ← what each component is (mart dim_component), dimensions only
+│   ├── product.yml          ← what each product is (mart dim_product), dimensions only
+│   ├── product_component.yml← which products use which components (mart bridge_product_component)
+│   └── volume_at_risk.yml   ← units / revenue / contribution at risk without CMs (marts fct_*volume_at_risk)
 ├── queries/               ← example queries (JSON) you can run with query.py
 ├── cube_client.py         ← the connection to Cube (token + request), used by query.py and the agents
 ├── query.py               ← run a query from the terminal
@@ -65,6 +69,37 @@ Built on `analytics_marts.fct_quarters_to_breach`, **one row per snapshot × com
 | `component_count` | measure | Number of components |
 
 ⚠️ `severity` is **not** about how high the saturation is: a component at 160% baseline is `medium` when the qualified CMs can absorb it. The severity is calculated in dbt; agents only read it.
+
+### The component and product cubes (`component.yml`, `product.yml`, `product_component.yml`)
+
+Descriptive cubes: **dimensions only**, plus a `count`. They say what a thing *is* (family, material, brand, hero, launch), so the numbers in the other cubes can be grouped and filtered by it.
+
+| Cube | One row per | Joined from |
+|---|---|---|
+| `component` / `component_history` | snapshot × component | `saturation`, `capacity_breach` / their `_history` versions |
+| `product` / `product_history` | snapshot × product | `product_component` |
+| `product_component` (latest only) | product × component (the BOM) | joins out to `product`, `component`, `capacity_breach` |
+
+Examples:
+- `saturation.peak_baseline_saturation` grouped by `component.family`: worst saturation per family.
+- `product_component.pf_code` + `product.is_hero` filtered on `capacity_breach.severity = high`: hero products hit by a high breach.
+
+⚠️ **Joins use both keys**, the code **and** `snapshot_quarter`, because the dims hold one row per snapshot. With the code alone, every row matches once per snapshot and the totals double. `tests/test_dims_cube.py` checks that grouping by a component attribute keeps the totals.
+
+A component **without a brand** is generic (shared across brands), not missing data. Labels and cartons have **no size**: the "500ml" in their description is the product's size.
+
+### The volume-at-risk cubes (`volume_at_risk.yml`)
+
+"If we don't invest and don't use CMs, how many products can't we make, and what is that worth?" Capacity = baseline (today's lines, no CMs), for the baseline and the stretch forecast.
+
+| Cube | One row per | Use it for |
+|---|---|---|
+| `volume_at_risk` | component × product × quarter | **per component**: what does the shortfall of AC X cost? Joins `component`, `product`, `capacity_breach` |
+| `product_volume_at_risk` | product × quarter (largest loss over its components) | **per product and totals**. Joins `product` |
+
+Measures (each `_baseline` and `_stretch`): `units_at_risk`, `revenue_at_risk` (units × price), `contribution_at_risk` (units × (price − packaging cost), **before all other costs**), `units_without_price` (launches: units counted, euros unknown). `product_volume_at_risk` also has `forecast_units_*`, `share_at_risk_*` (sum ÷ sum) and `products_at_risk_*`.
+
+⚠️ Don't add `volume_at_risk` up per product: a product short on two components would be counted twice. That's what `product_volume_at_risk` is for.
 
 ## Metrics
 

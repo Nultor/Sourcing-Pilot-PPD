@@ -1,0 +1,62 @@
+# What each finished product (PF) is (README §3.1). Built on the dbt mart dim_product, one
+# row per snapshot x PF. Only descriptive dimensions plus a count.
+#
+#   product          latest snapshot only. Default for agents.
+#   product_history  every snapshot.
+#
+# Joined from product_component (the BOM), on BOTH pf_code and snapshot_quarter.
+
+cubes:
+  - name: product_history
+    sql_table: analytics_marts.dim_product
+    description: Finished product (PF) attributes, every data snapshot.
+
+    dimensions:
+      - name: product_key
+        sql: product_key
+        type: string
+        primary_key: true
+        public: false
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+        description: Quarter of the data extract, e.g. 2026Q4.
+      - name: pf_code
+        sql: pf_code
+        type: string
+        description: Finished product (PF) code.
+      - name: description
+        sql: pf_description
+        type: string
+        description: Product description, e.g. "Vireo Hair Pure Detox cream 75ml".
+      - name: brand
+        sql: brand
+        type: string
+      - name: format_ml
+        sql: format_ml
+        type: number
+        description: Product size in ml.
+      - name: is_hero
+        sql: is_hero
+        type: boolean
+        description: Hero product = finance "business driver", the products that matter most for revenue.
+      - name: is_npd
+        sql: is_npd
+        type: boolean
+        description: True for a launch (NPD) that is not on sale yet.
+      - name: launch_quarter
+        sql: launch_quarter
+        type: string
+        description: Planned launch quarter, only for NPD products.
+
+    measures:
+      - name: count
+        type: count
+        description: Number of products.
+
+  - name: product
+    extends: product_history
+    sql: >
+      SELECT * FROM analytics_marts.dim_product
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.dim_product)
+    description: Finished product (PF) attributes, latest data snapshot only.

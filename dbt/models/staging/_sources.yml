@@ -21,4 +21,8 @@ sources:
       - name: saturation
       - name: capacity
       - name: components
+      - name: products
+      - name: bom
+      - name: forecast
+      - name: std_prices
       - name: planted_cases

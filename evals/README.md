@@ -9,7 +9,7 @@ The free, deterministic tests are in `tests/` (see `tests/README.md`).
 Docker up, data loaded, dbt built, `OPENAI_API_KEY` in `.env`. From the repo root:
 
 ```bash
-pytest evals --run-llm                 # all evals (~40 s, 16 agent runs)
+pytest evals --run-llm                 # all evals (~2.5 min, 44 agent runs)
 pytest evals --run-llm -rf             # + a short line per failed case at the end
 pytest evals --run-llm -k 366413968    # one component only
 ```
@@ -32,6 +32,27 @@ assert ('high', '2027Q1') == ('medium', '2027Q1')
 ```
 
 **Score history:** 10–11/16 when the agent applied the severity rule itself → 12–13/16 with a clearer prompt → **16/16** once severity was calculated in dbt (`fct_quarters_to_breach`) and the agent only reads it. See `pipeline/README.md` for details.
+
+## `test_analyst_components.py`
+
+Two kinds of question, checked against `components.csv`, `bom.csv`, `products.csv` and `planted_cases.csv`:
+
+1. **What is component X?** (10 cases) One component per family among those whose brand, material or size was **blank in the raw data**, so the answer is only right if the whole chain works: recovery in dbt → mart → Cube → tool → agent. Plus two **traps**: generic components with no brand, although all their products are of one brand. The agent must answer `brand=none`, not guess.
+   `RESULT: material=...; brand=...; size_ml=...; used_by_hero=...; n_products=...`
+2. **Which products are at risk?** (3 cases) Hero products on a high breach, hero products on any real breach, all products on a high breach. The listed PF codes must be exactly the truth set.
+   `RESULT: products=E12345, E67890, ...`
+
+**Score history:** 13/13 on the first run (2026-11-04).
+
+## `test_analyst_value_at_risk.py`
+
+What capacity shortfalls cost, without CMs or investment. Expected numbers come from the volume-at-risk marts through Cube (the marts are checked against the truth by dbt and `tests/test_volume_at_risk_cube.py`), so this scores only the agent. Numbers within 1%.
+
+1. Revenue and units at risk per component with a real breach (the 12 RFQ trigger A components), baseline.
+2. The business-case totals, baseline and stretch: products, units, revenue, contribution, launch units without price.
+3. The hero product with the most revenue at risk.
+
+**Score history:** 13/15 when the one-component / one-product tools returned only the breakdown (the agent added up or picked a row itself) → **15/15** (twice) once they also return the total.
 
 ## Using the score
 

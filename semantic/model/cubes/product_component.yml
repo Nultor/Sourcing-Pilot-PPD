@@ -1,0 +1,55 @@
+# Which products (PF) use which components (AC): the BOM (dbt mart bridge_product_component),
+# latest snapshot only. A product uses many components and a component is used by many
+# products, so this cube sits between them and joins out to product, component and
+# capacity_breach. That's how "which hero products are hit by a capacity breach" is answered.
+#
+# Many-to-one joins from here, all on the code AND snapshot_quarter (see component.yml).
+
+cubes:
+  - name: product_component
+    sql: >
+      SELECT * FROM analytics_marts.bridge_product_component
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.bridge_product_component)
+    description: Bill of materials, which products use which components, latest data snapshot only.
+
+    joins:
+      - name: product
+        relationship: many_to_one
+        sql: "{CUBE}.pf_code = {product.pf_code} AND {CUBE}.snapshot_quarter = {product.snapshot_quarter}"
+      - name: component
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {component.ac_code} AND {CUBE}.snapshot_quarter = {component.snapshot_quarter}"
+      - name: capacity_breach
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {capacity_breach.ac_code} AND {CUBE}.snapshot_quarter = {capacity_breach.snapshot_quarter}"
+
+    dimensions:
+      - name: bom_key
+        sql: bom_key
+        type: string
+        primary_key: true
+        public: false
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+      - name: pf_code
+        sql: pf_code
+        type: string
+        description: Finished product (PF) code.
+      - name: ac_code
+        sql: ac_code
+        type: string
+        description: Packaging component (AC) code.
+      - name: qty_per_pf
+        sql: qty_per_pf
+        type: number
+        description: Pieces of the component in one product.
+      - name: bom_source
+        sql: bom_source
+        type: string
+        description: site_bom (product on sale) or npd (launch).
+
+    measures:
+      - name: count
+        type: count
+        description: Number of product x component links.

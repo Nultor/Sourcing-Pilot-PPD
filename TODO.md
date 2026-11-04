@@ -1,6 +1,6 @@
 # TODO
 
-What to build next, in order, and how. Status on 2026-11-03: stage 1 trigger A (capacity) works end to end: `fct_saturation` + `fct_quarters_to_breach` → Cube → agent tools → Streamlit chat, eval 16/16.
+What to build next, in order, and how. Status on 2026-11-04: stage 1 trigger A (capacity) works end to end: `fct_saturation` + `fct_quarters_to_breach` → Cube → agent tools → Streamlit chat, eval 16/16. Items 1 (dims) and 2 (volume at risk) done.
 
 Tick a box when it's done. Each mart follows **the recipe** below, so the per-item sections only list what's specific to that mart.
 
@@ -28,9 +28,9 @@ The principle: **numbers and rules in code (dbt/Cube), language and judgement in
 
 | # | Decision | Needed for | Suggested default |
 |---|---|---|---|
-| D1 | When a component is short, which finished products (PF) lose volume? | 2 | Proportionally to each PF's forecast. Alternative: protect hero products first. |
-| D2 | Selling price per PF | 2 | `net_sales_eur ÷ qty_sold` over the last 4 history quarters |
-| D3 | Cost: there is **no full production cost** in the data | 2 | Report **revenue at risk** + **contribution before other costs** (price − packaging cost from std cost × BOM), clearly labelled |
+| D1 | When a component is short, which finished products (PF) lose volume? | 2 | **Chosen (2026-11-04): proportionally** to each PF's share of the component demand. Alternative: protect hero products first. |
+| D2 | Selling price per PF | 2 | **Chosen:** `net_sales_eur ÷ qty_sold` over the last 4 history quarters (var `price_history_quarters`) |
+| D3 | Cost: there is **no full production cost** in the data | 2 | **Chosen:** report **revenue at risk** + **contribution before other costs** (price − packaging cost from std cost × BOM), clearly labelled |
 | D4 | Which spend volume: next 4 forecast quarters (baseline) or last 4 quarters of production? | 4 | Next 4 forecast quarters, baseline |
 | D5 | Priority score weights | 6 | Start with simple, explainable rules (below); tune with the eval |
 | D6 | Investment / CM / RFQ option data (costs, lead times, budget cap) | 7 | Extend the generator with realistic ranges per component family |
@@ -72,6 +72,12 @@ Then `saturation.peak_baseline_saturation` grouped by `component.family` works.
 
 **Done when:** dbt tests pass vs both ground-truth tables; you can group saturation by `component.family` in the Playground.
 
+**Status: done (2026-11-04).** What was built, beyond the plan below:
+- Material recovery has four sources in order: component master → `site_bom_moq` → the description (`Jar glass 500ml`, families without a brand) → the previous snapshot. `material_source` says which one was used.
+- Size only for sized families (`seeds/component_families.csv`): a label's "500ml" is the product's size, not the label's.
+- `bridge_product_component` (mart) + `product_component` cube: the BOM, so products can be linked to breaches.
+- Tools `get_component_info` and `get_products_at_risk`; eval `evals/test_analyst_components.py` (13/13).
+
 ### Step-by-step guide (where to look, no code)
 
 - [x] **Step 1: Understand the data** (DBeaver). Done on 2026-11-03. What the data shows:
@@ -80,7 +86,7 @@ Then `saturation.peak_baseline_saturation` grouped by `component.family` works.
   - `ground_truth.products`: 76 products, 20 heroes, 6 NPD. Hero = `Business Driver` in `finance_sales_history`. NPD products have no sales history.
   - The trap: a component used by products of **two different brands**. Check what the truth does for those.
 
-- [ ] **Step 2: Build `dim_product` first (not `dim_component`).** `dim_component` needs to know whether a component is used by a **hero** product, so the product dimension has to exist first.
+- [x] **Step 2: Build `dim_product` first (not `dim_component`).** `dim_component` needs to know whether a component is used by a **hero** product, so the product dimension has to exist first.
   - **Grain:** snapshot × `pf_code`. That means **two** sources stacked: products on sale (sales history) **plus** NPD products not yet on sale.
   - **Where to look for examples:**
     - `dbt/models/intermediate/int_bom.sql`: stacking two sources with `union all`, and "take it from source A only if it's not already in source B" (`not exists`). It's exactly the same situation.
@@ -88,7 +94,7 @@ Then `saturation.peak_baseline_saturation` grouped by `component.family` works.
   - **Decide:** which quarter's description and brand do you keep if they differ? (Latest is the usual choice.)
   - **Put it in** `models/marts/`. Dimensions are marts too (in dbt, often prefixed `dim_` instead of `fct_`).
 
-- [ ] **Step 3: Recover the missing component fields (`int_component_enriched`).** This is the cross-source part, so it goes in `models/intermediate/`.
+- [x] **Step 3: Recover the missing component fields (`int_component_enriched`).** This is the cross-source part, so it goes in `models/intermediate/`.
   - **Where to look:**
     - `stg_finance_std_cost.sql`: "fill a blank from another place" with `coalesce`, plus an `is_..._imputed` flag. Copy that idea for `is_brand_recovered` etc.
     - `stg_finance_forecast.sql`: the same idea, using a CTE that's joined back in.
@@ -97,12 +103,12 @@ Then `saturation.peak_baseline_saturation` grouped by `component.family` works.
   - **Only recover when the answer is unambiguous.** If the products using a component disagree on brand, leave it null (`count(distinct ...) = 1` is the kind of check that helps).
   - Try each CTE as a query in DBeaver first; copy it into the dbt file once the rows look right.
 
-- [ ] **Step 4: `dim_component` (mart).** `int_component_enriched` plus a few useful columns:
+- [x] **Step 4: `dim_component` (mart).** `int_component_enriched` plus a few useful columns:
   - `n_products_using`: count over `int_bom` (look at how `fct_saturation.sql` groups and counts).
   - `used_by_hero`: does any product using it have the hero flag? (`bool_or` in Postgres is handy; look it up.)
   - `is_new`: already in `stg_npd_projects` (`is_new_component`).
 
-- [ ] **Step 5: Tests.**
+- [x] **Step 5: Tests.**
   - **Add the two ground-truth tables** (`components`, `products`) to `dbt/models/staging/_sources.yml` under `ground_truth` (look at how `planted_cases` was added).
   - **Generic tests** in `_marts.yml`: unique + not_null on a key, as for `fct_quarters_to_breach`.
   - **Singular tests:** copy `dbt/tests/assert_breach_matches_planted_cases.sql`, one test per dim, returning the rows where your value ≠ the truth.
@@ -110,16 +116,22 @@ Then `saturation.peak_baseline_saturation` grouped by `component.family` works.
   - **Run:** `cd dbt && dbt build --profiles-dir . --select +dim_product+ +dim_component+`
   - **When a test fails:** run the test's SQL yourself in DBeaver (dbt writes the compiled SQL to `dbt/target/compiled/...`) and look at the wrong rows. They usually point straight at the rule you got wrong, especially the brand trap.
 
-- [ ] **Step 6: Cube** (once dbt is green).
+- [x] **Step 6: Cube** (once dbt is green).
   - **Two new cube files**, `component.yml` and `product.yml`: copy the structure of `capacity_breach.yml`, but with **only dimensions** plus a `count` measure.
   - **Joins:** add a `joins:` block to `saturation.yml` and `capacity_breach.yml` (the YAML is above, under **Cube**). Read Cube's docs page **"Joins"** (data modeling → joins) to understand `many_to_one`. Join on **both** `ac_code` and `snapshot_quarter`.
   - **Check** in the Playground (http://localhost:4000): `Saturation Peak Baseline Saturation` grouped by `Component Family`. If the numbers look doubled, the join is missing the snapshot condition.
 
-- [ ] **Step 7: Python tests + the tool**, following the recipe (steps 7–11 at the top): `tests/test_dims_cube.py`, `get_component_info(ac_code)` in `pipeline/tools/cube.py`, a test in `tests/test_cube_tools.py`, then the docs.
+- [x] **Step 7: Python tests + the tool**, following the recipe (steps 7–11 at the top): `tests/test_dims_cube.py`, `get_component_info(ac_code)` in `pipeline/tools/cube.py`, a test in `tests/test_cube_tools.py`, then the docs.
 
 ---
 
 ## 2. `fct_volume_at_risk` (the finance case)
+
+**Status: done (2026-11-04).** `int_pf_price`, `int_pf_packaging_cost`, `fct_volume_at_risk`, `fct_product_volume_at_risk`; cubes in `volume_at_risk.yml`; tools `get_total_volume_at_risk`, `get_volume_at_risk`, `get_product_volume_at_risk`; eval `evals/test_analyst_value_at_risk.py` 15/15. Result 2026Q4, baseline, no CMs: 21 products, 4.2M units, €98.2M revenue / €96.2M contribution after packaging at risk; 95% of it on hero products.
+Learned on the way:
+- Tools for one component / product must return the **total** too: given only per-product or per-quarter rows, the agent added up or picked a row itself and got the euros wrong (eval 13/15 → 15/15).
+- The generator gives every product of a brand the **same selling price** (4 prices for 70 products). Fine for the demo; a per-product price spread in `data_gen/` would make revenue at risk more realistic.
+- Stretch: staging estimates 33 blank stretch forecasts (`is_stretch_imputed`), so stretch tests allow 0.5–1%.
 
 **Question:** *"If I don't invest and don't use CMs, how many products can't I make, and what is that worth?"*
 

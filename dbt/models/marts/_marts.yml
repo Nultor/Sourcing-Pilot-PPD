@@ -52,3 +52,119 @@ models:
       - name: peak_stretch_shortfall
         description: Pieces per quarter even lines + qualified CMs can't make (stretch demand), worst quarter.
         data_tests: [not_null]
+
+  - name: dim_product
+    description: >
+      What each finished product (PF) is: brand, format, hero flag, launch status.
+      Products on sale come from the finance sales history, launches (NPD) from npd_projects.
+    columns:
+      - name: product_key
+        description: snapshot_quarter | pf_code (the grain)
+        data_tests: [unique, not_null]
+      - name: pf_code
+        data_tests: [not_null]
+      - name: brand
+        data_tests: [not_null]
+      - name: format_ml
+        data_tests: [not_null]
+      - name: is_hero
+        description: Finance "business driver" flag. Launches are never heroes.
+        data_tests: [not_null]
+      - name: is_npd
+        description: True for launches not on sale yet (then launch_quarter is set).
+        data_tests: [not_null]
+
+  - name: dim_component
+    description: >
+      What each packaging component (AC) is, with the blanks recovered from other sources
+      (int_component_enriched), and its role: how many products use it, whether a hero
+      product uses it, whether it is new for a launch.
+    columns:
+      - name: component_key
+        description: snapshot_quarter | ac_code (the grain)
+        data_tests: [unique, not_null]
+      - name: ac_code
+        data_tests: [not_null]
+      - name: family
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('component_families')
+                field: family
+      - name: material
+        data_tests: [not_null]
+      - name: material_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [component_master, site_bom_moq, description, previous_snapshot]
+      - name: n_products_using
+        data_tests: [not_null]
+      - name: used_by_hero
+        data_tests: [not_null]
+      - name: is_new
+        data_tests: [not_null]
+
+  - name: bridge_product_component
+    description: Which products (PF) use which components (AC), with the quantity per product (the BOM).
+    columns:
+      - name: bom_key
+        description: snapshot_quarter | pf_code | ac_code (the grain)
+        data_tests: [unique, not_null]
+      - name: qty_per_pf
+        data_tests: [not_null]
+      - name: pf_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: pf_code
+      - name: ac_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_component')
+                field: ac_code
+
+  - name: fct_volume_at_risk
+    description: >
+      Units, revenue and contribution at risk per component x product x forecast quarter,
+      WITHOUT CMs or investment (baseline capacity only), for the baseline and the stretch
+      forecast. The component shortfall is split over its products by their share of the
+      demand. Contribution = price minus packaging cost only. Do not sum over components
+      per product (double counts): use fct_product_volume_at_risk.
+    columns:
+      - name: volume_at_risk_key
+        description: snapshot_quarter | ac_code | pf_code | forecast_quarter (the grain)
+        data_tests: [unique, not_null]
+      - name: shortfall_baseline
+        description: Pieces of the component the current lines can't make in the quarter (baseline forecast).
+        data_tests: [not_null]
+      - name: shortfall_stretch
+        description: The same for the stretch forecast, still without CMs.
+        data_tests: [not_null]
+      - name: units_at_risk_baseline
+        description: Units of the product that can't be made because of this component (baseline).
+        data_tests: [not_null]
+      - name: units_at_risk_stretch
+        data_tests: [not_null]
+      - name: has_price
+        description: False for launches (NPD) without sales history; then the euro columns are null.
+        data_tests: [not_null]
+
+  - name: fct_product_volume_at_risk
+    description: >
+      Units, revenue and contribution at risk per product x forecast quarter, without CMs or
+      investment. A product short on several components loses the largest share, not the
+      sum (binding_ac_code_* = the component that causes it). Safe to sum.
+    columns:
+      - name: product_volume_at_risk_key
+        description: snapshot_quarter | pf_code | forecast_quarter (the grain)
+        data_tests: [unique, not_null]
+      - name: units_at_risk_baseline
+        data_tests: [not_null]
+      - name: units_at_risk_stretch
+        data_tests: [not_null]
+      - name: has_price
+        data_tests: [not_null]

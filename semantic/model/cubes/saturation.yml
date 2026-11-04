@@ -10,11 +10,19 @@
 # Saturation is sum(demand) / sum(capacity), never an average of the per-row ratios:
 # averaging ratios gives wrong numbers as soon as someone groups by fewer dimensions.
 # The peak_* measures are the worst single quarter (max of the per-row ratio).
+#
+# Joined to component / component_history (component.yml), on ac_code AND snapshot_quarter,
+# so you can group by component.family, component.used_by_hero, ...
 
 cubes:
   - name: saturation_history
     sql_table: analytics_marts.fct_saturation
     description: Capacity saturation per component and forecast quarter, every data snapshot.
+
+    joins:
+      - name: component_history
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {component_history.ac_code} AND {CUBE}.snapshot_quarter = {component_history.snapshot_quarter}"
 
     dimensions:
       # grain: snapshot_quarter | ac_code | forecast_quarter
@@ -93,3 +101,9 @@ cubes:
       SELECT * FROM analytics_marts.fct_saturation
       WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.fct_saturation)
     description: Capacity saturation per component and forecast quarter, latest data snapshot only.
+
+    # the latest-snapshot cube joins the latest-snapshot dims (the history join is inherited)
+    joins:
+      - name: component
+        relationship: many_to_one
+        sql: "{CUBE}.ac_code = {component.ac_code} AND {CUBE}.snapshot_quarter = {component.snapshot_quarter}"

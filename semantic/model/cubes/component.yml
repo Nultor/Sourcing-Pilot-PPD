@@ -1,0 +1,91 @@
+# What each packaging component (AC) is, and its role (README §3.1). Built on the dbt mart
+# dim_component, one row per snapshot x AC. Only descriptive dimensions plus a count:
+# the numbers live in saturation / capacity_breach, which join to these cubes.
+#
+#   component          latest snapshot only. Default for agents.
+#   component_history  every snapshot. Joined from the *_history cubes.
+#
+# The dims are per snapshot, so every join to them uses BOTH ac_code and snapshot_quarter;
+# with ac_code alone each row would match once per snapshot and the sums would double.
+
+cubes:
+  - name: component_history
+    sql_table: analytics_marts.dim_component
+    description: Packaging component (AC) attributes, every data snapshot.
+
+    dimensions:
+      - name: component_key
+        sql: component_key
+        type: string
+        primary_key: true
+        public: false
+      - name: snapshot_quarter
+        sql: snapshot_quarter
+        type: string
+        description: Quarter of the data extract, e.g. 2026Q4.
+      - name: ac_code
+        sql: ac_code
+        type: string
+        description: Packaging component (AC) code.
+      - name: description
+        sql: ac_description
+        type: string
+        description: Component description, e.g. "Jar glass 500ml".
+      - name: family
+        sql: family
+        type: string
+        description: Component family, e.g. Jar, Cap, Label, Folding carton.
+      - name: material
+        sql: material
+        type: string
+        description: Material, e.g. PP, glass, board.
+      - name: size_ml
+        sql: size_ml
+        type: number
+        description: Volume in ml, only for containers (bottles, jars, tubes, pouches); empty otherwise.
+      - name: neck
+        sql: neck
+        type: string
+        description: Neck finish, e.g. 24/410 (caps, pumps).
+      - name: colour
+        sql: colour
+        type: string
+      - name: weight_g
+        sql: weight_g
+        type: number
+        description: Weight in grams.
+      - name: technology
+        sql: technology
+        type: string
+        description: Production technology, e.g. injection moulding.
+      - name: brand
+        sql: brand
+        type: string
+        description: Brand, only for brand-specific components (labels, cartons, tubes, pouches); empty = generic.
+      - name: status
+        sql: status
+        type: string
+      - name: n_products_using
+        sql: n_products_using
+        type: number
+        description: Number of products (PFs, on sale or in launch) that use the component.
+      - name: used_by_hero
+        sql: used_by_hero
+        type: boolean
+        description: True if at least one hero product (finance business driver) uses the component.
+      - name: is_new
+        sql: is_new
+        type: boolean
+        description: True if the component is new, for a product launch (NPD).
+
+    measures:
+      - name: count
+        type: count
+        description: Number of components.
+
+  - name: component
+    extends: component_history
+    sql: >
+      SELECT * FROM analytics_marts.dim_component
+      WHERE snapshot_quarter = (SELECT max(snapshot_quarter) FROM analytics_marts.dim_component)
+    description: Packaging component (AC) attributes, latest data snapshot only.
